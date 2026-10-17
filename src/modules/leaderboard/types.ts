@@ -1,4 +1,5 @@
-import type { AttackType, DamageBreakdown, NoelleBuild } from '@/modules/calculator/types';
+import type { DamageExplanation } from '@/modules/calculator/noelle';
+import type { AttackType, DamageBreakdown, NoelleBuild, TeamConfig } from '@/modules/calculator/types';
 import type { TeamMember } from './team-members';
 
 // Shapes shared by the API, the server action and the client components
@@ -59,4 +60,16 @@ export interface PlayerBuildPage {
   build: NoelleBuild;
   updatedAt: string;
   scenarios: PlayerScenarioResult[];
+}
+
+export interface PlayerDamagePage {
+  uid: string;
+  nickname: string;
+  updatedAt: string;
+  scenario: ScenarioSummary;
+  team: TeamConfig;
+  build: NoelleBuild;
+  explanation: DamageExplanation;
+  rank: number;
+  total: number;
 }

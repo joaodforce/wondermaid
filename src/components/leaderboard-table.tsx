@@ -148,7 +148,13 @@ export function LeaderboardTable({
                         : '–'}
                     </td>
                     <td className="px-3 py-3 sm:px-4 text-right font-mono text-base font-bold text-amber-400">
-                      {formatNumber(entry.finalDamage)}
+                      <Link
+                        href={`/${entry.uid}/calc/${selected.id}`}
+                        title="See how this damage is calculated"
+                        className="underline decoration-amber-400/30 decoration-dotted underline-offset-4 hover:text-amber-300 hover:decoration-amber-300"
+                      >
+                        {formatNumber(entry.finalDamage)}
+                      </Link>
                     </td>
                   </tr>
                 ))}
