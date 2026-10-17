@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { scenarioId = DEFAULT_SCENARIO_ID, limit } = query.data;
-    return Response.json(await getLeaderboard(scenarioId, limit));
+    const { scenarioId = DEFAULT_SCENARIO_ID, limit, page, q, focus } = query.data;
+    return Response.json(await getLeaderboard(scenarioId, { page, pageSize: limit, search: q, focusUid: focus }));
   } catch (error) {
     return handleLeaderboardError(error, 'get');
   }

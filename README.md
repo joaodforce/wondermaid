@@ -11,7 +11,9 @@ for every team scenario and ranks it against everyone else.
 3. The mapper (`src/modules/enka/mapper.ts`) turns Noelle's `fightPropMap`, weapon and artifacts into a `NoelleBuild`.
 4. `calculateNoelleDamage` (`src/modules/calculator/noelle.ts`) computes her damage for each active scenario.
 5. `updatePlayerFromEnka` (`src/modules/leaderboard/services.ts`) stores the player, the build and one rank per
-   scenario in PostgreSQL. `GET /api/leaderboard?scenarioId=...` returns the top 100.
+   scenario in PostgreSQL. `GET /api/leaderboard?scenarioId=...` returns one page of the board: `page` (1-based), `limit` (page size, default and
+   max 100), `q` (nickname or UID prefix search) and `focus` (a UID whose page to return). Ranks are always overall
+   positions.
 
 ### Damage model
 
