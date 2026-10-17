@@ -13,5 +13,9 @@ export const scenarioIdSchema = z
 
 export const leaderboardQuerySchema = z.object({
   scenarioId: scenarioIdSchema.optional(),
+  /** Page size */
   limit: z.coerce.number().int().min(1).max(100).default(100),
+  page: z.coerce.number().int().min(1).max(100_000).default(1),
+  q: z.string().trim().max(30).optional(),
+  focus: uidSchema.optional(),
 });
