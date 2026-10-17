@@ -53,12 +53,21 @@ export class BuffLedger {
   }
 }
 
-// Inspiring Flag DEF bonus at talent level 10 / 13 (C3 raises his skill by 3)
-const GOROU_FLAT_DEF = { base: 371.1, c3: 438.1 };
+/** Standard talent scaling: a level's value is the level 1 value times this (index 0 = level 1) */
+export const TALENT_SCALING = [1, 1.075, 1.15, 1.25, 1.325, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.125];
+export const scaleTalent = (levelOneValue: number, level: number) =>
+  levelOneValue * TALENT_SCALING[Math.min(Math.max(Math.round(level), 1), 13) - 1];
+
+// Inspiring Flag DEF bonus at talent level 1; 10 and 13 are the defaults without a real build (C3 raises his skill by 3)
+const GOROU_FLAT_DEF_LV1 = 206.16;
+const GOROU_CRUNCH_GEO_MEMBERS = 3;
+const GOROU_C6_CRIT_DMG = [0.1, 0.2, 0.4];
+// Fantastic Voyage ATK bonus at burst level 1, as a share of Bennett's base ATK; C1 adds 20%
+const BENNETT_ATK_RATIO_LV1 = 0.56;
 // Typical average Fanfare across a rotation; C1 raises the cap to 400 and C2 speeds up gain
 const FURINA_DEFAULT_FANFARE = [200, 340, 400];
-// DMG bonus per Fanfare point at burst level 10 / 13 (C3 raises her burst by 3)
-const FURINA_DMG_PER_FANFARE = { base: 0.0025, c3: 0.0031 };
+// DMG bonus per Fanfare point: 0.07% at burst level 1, +0.02% per level (0.25% at 10, 0.31% at 13)
+const furinaDmgPerFanfare = (level: number) => 0.0007 + 0.0002 * (Math.min(Math.max(level, 1), 13) - 1);
 // Average of Yelan's 1% -> 50% ramp over her 15s burst
 const YELAN_AVERAGE_DMG_BONUS = 0.27;
 const CRANES_ECHOING_CALL_PLUNGE_BONUS = [0.28, 0.41, 0.54, 0.67, 0.8];
@@ -74,19 +83,30 @@ export function applyTeamBuffs(buffs: BuffLedger, team: TeamConfig, attackType: 
   if (team.gorou) {
     const { constellation } = team.gorou;
     const source = `Gorou C${constellation}`;
-    add('flatDef', constellation >= 3 ? GOROU_FLAT_DEF.c3 : GOROU_FLAT_DEF.base, source,
-      `Inspiring Flag at skill level ${constellation >= 3 ? 13 : 10}`);
-    add('dmgBonus', 0.15, source, 'Crunch: Geo DMG +15% with 3 Geo members');
+    const skillLevel = team.gorou.skillLevel ?? (constellation >= 3 ? 13 : 10);
+    const geoCount = Math.min(Math.max(team.gorou.geoCount ?? 3, 1), 3);
+    add('flatDef', scaleTalent(GOROU_FLAT_DEF_LV1, skillLevel), source, `Inspiring Flag at skill level ${skillLevel}`);
+    if (geoCount >= GOROU_CRUNCH_GEO_MEMBERS) add('dmgBonus', 0.15, source, 'Crunch: Geo DMG +15% with 3 Geo members');
     add('defPercent', 0.25, source, 'A1: DEF +25% after his burst');
-    if (constellation >= 6) add('critDmg', 0.4, source, 'C6: Geo CRIT DMG +40% with 3 Geo members');
+    if (constellation >= 6) {
+      add('critDmg', GOROU_C6_CRIT_DMG[geoCount - 1], source, `C6: Geo CRIT DMG with ${geoCount} Geo member${geoCount > 1 ? 's' : ''}`);
+    }
   }
 
   if (team.furina) {
     const { constellation } = team.furina;
     const fanfare = team.furina.fanfare ?? FURINA_DEFAULT_FANFARE[Math.min(constellation, 2)];
-    const perPoint = constellation >= 3 ? FURINA_DMG_PER_FANFARE.c3 : FURINA_DMG_PER_FANFARE.base;
+    const burstLevel = team.furina.burstLevel ?? (constellation >= 3 ? 13 : 10);
+    const perPoint = furinaDmgPerFanfare(burstLevel);
     add('dmgBonus', fanfare * perPoint, `Furina C${constellation}`,
-      `${fanfare} Fanfare × ${(perPoint * 100).toFixed(2)}% (burst level ${constellation >= 3 ? 13 : 10})`);
+      `${fanfare} Fanfare × ${(perPoint * 100).toFixed(2)}% (burst level ${burstLevel})`);
+  }
+
+  if (team.bennett) {
+    const { constellation, baseAtk, burstLevel } = team.bennett;
+    const ratio = scaleTalent(BENNETT_ATK_RATIO_LV1, burstLevel) + (constellation >= 1 ? 0.2 : 0);
+    add('flatAtk', baseAtk * ratio, `Bennett C${constellation}`,
+      `Fantastic Voyage: ${(ratio * 100).toFixed(1)}% of his ${Math.round(baseAtk)} base ATK (burst level ${burstLevel}${constellation >= 1 ? ', C1' : ''})`);
   }
 
   if (team.yelan) add('dmgBonus', YELAN_AVERAGE_DMG_BONUS, 'Yelan', "Average of her 1% → 50% ramp over a 15s burst");
@@ -113,4 +133,6 @@ export function applyTeamBuffs(buffs: BuffLedger, team: TeamConfig, attackType: 
   }
 
   if (team.linnea) add('resShred', 0.35, 'Linnea', 'RES -35%');
+
+  for (const buff of team.extraBuffs ?? []) add(buff.stat, buff.value, buff.source, buff.note);
 }

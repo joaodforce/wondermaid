@@ -29,6 +29,13 @@
       "when": 1792243135131,
       "tag": "0003_fixed_weapons_and_enka_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792249900724,
+      "tag": "0004_accounts_and_team_showcase",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { ARTIFACT_SET_IDS, WEAPON_IDS, artifactSetName, weaponName } from './data';
-import { applyTeamBuffs, BuffLedger, type BuffEntry, type Buffs } from './team';
+import { applyTeamBuffs, BuffLedger, scaleTalent, type BuffEntry, type Buffs } from './team';
 import type { AttackType, DamageBreakdown, NoelleBuild, NoelleStats, Scenario, TeamConfig, WeaponInfo } from './types';
 import { withFixedWeapon } from './weapons';
 
@@ -7,6 +7,9 @@ import { withFixedWeapon } from './weapons';
 // (Sweeping Time converts 85% DEF to ATK, plus 50% from C6) and the same attack talent levels.
 export const MOTION_VALUES: Record<AttackType, number> = { Na4: 2.242, Ca: 1.003, Plunge: 3.682 };
 export const BURST_DEF_TO_ATK = 1.35;
+// Sweeping Time converts 40% of DEF at burst level 1 (85% at 13); C6 adds 50%
+const BURST_DEF_TO_ATK_LV1 = 0.4;
+const C6_DEF_TO_ATK = 0.5;
 const C2_CHARGED_DMG_BONUS = 0.15;
 
 export const ENEMY_LEVEL = 100;
@@ -104,6 +107,10 @@ export interface LunarCrystallizeExplanation {
 export interface DamageExplanation {
   attackType: AttackType;
   motionValue: number;
+  /** Share of DEF Sweeping Time adds to ATK */
+  burstDefToAtk: number;
+  /** Noelle's constellation and burst level when they're real rather than the standard C6 / 13 */
+  noelle: Scenario['noelle'] | null;
   characterLevel: number;
   /** The player's character sheet from Enka, with their own weapon */
   playerSheet: NoelleStats;
@@ -164,16 +171,24 @@ export function explainNoelleDamage(playerBuild: NoelleBuild, scenario: Scenario
   const { stats } = build;
   const { attackType, team } = scenario;
 
+  // Real constellation and burst level for Team Showcase; the standard leaderboards assume C6 and level 13
+  const constellation = scenario.noelle?.constellation ?? 6;
+  const burstDefToAtk = scenario.noelle
+    ? scaleTalent(BURST_DEF_TO_ATK_LV1, scenario.noelle.burstLevel) + (constellation >= 6 ? C6_DEF_TO_ATK : 0)
+    : BURST_DEF_TO_ATK;
+
   const ledger = new BuffLedger();
   applyWeaponPassive(ledger, build, attackType);
   applyArtifactSets(ledger, build, team, attackType);
   applyTeamBuffs(ledger, team, attackType);
-  if (attackType === 'Ca') ledger.add('dmgBonus', C2_CHARGED_DMG_BONUS, 'noelle', 'Noelle C2', 'Charged Attack DMG +15%');
+  if (attackType === 'Ca' && constellation >= 2) {
+    ledger.add('dmgBonus', C2_CHARGED_DMG_BONUS, 'noelle', 'Noelle C2', 'Charged Attack DMG +15%');
+  }
 
   const buffs = ledger.totals;
   const totalAtk = stats.atk + stats.baseAtk * buffs.atkPercent + buffs.flatAtk;
   const totalDef = stats.def + stats.baseDef * buffs.defPercent + buffs.flatDef;
-  const scalingAtk = totalAtk + totalDef * BURST_DEF_TO_ATK;
+  const scalingAtk = totalAtk + totalDef * burstDefToAtk;
 
   if (build.weapon.id === WEAPON_IDS.redhornStonethresher && isNormalOrCharged(attackType)) {
     const ratio = REDHORN_DEF_TO_DMG[refinementIndex(build.weapon.refinement)];
@@ -199,6 +214,8 @@ export function explainNoelleDamage(playerBuild: NoelleBuild, scenario: Scenario
   return {
     attackType,
     motionValue,
+    burstDefToAtk,
+    noelle: scenario.noelle ?? null,
     characterLevel: build.level,
     playerSheet: playerBuild.stats,
     playerWeapon: playerBuild.weapon,

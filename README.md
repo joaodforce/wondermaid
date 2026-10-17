@@ -49,7 +49,31 @@ calculator, ranks are recomputed from the stored builds when the Docker image bo
 The full Enka response from each player's latest update is kept in `enka_profiles.response_json`, so new features can
 use fields we don't parse yet without players updating again.
 
-## Getting started
+## Accounts and Team Showcase
+
+Accounts are only a username and a password (bcrypt), with no email or other personal data. Sessions are random
+tokens in an httpOnly cookie, stored as SHA-256 hashes (`src/modules/auth/`). Failed logins are limited to 10 per
+username every 15 minutes when Upstash Redis is configured.
+
+To link a game account, a user asks for a code on `/account` (e.g. `WM-123456`), puts it in their in-game bio and
+presses Verify: the bio is read through Enka (skipping our cache) and, if it contains the code, the UID is linked to
+them (`src/modules/accounts/`). Whoever can edit the bio owns the UID, so a later verified claim takes it over.
+
+Owners can submit a **Team Showcase** entry: Noelle plus three supports from their showcase. Allowed supports are in
+`SUPPORT_ALLOWLIST` (`src/modules/team/characters.ts`); main DPS units are left out. The team's buffs come from the
+teammates' real builds (`teamScenario` in `src/modules/team/party.ts`):
+
+- Gorou's skill level, constellation and the party's actual Geo count; Furina's burst level and constellation;
+  Bennett's base ATK, burst level and C1; Xianyun's ATK and Crane's Echoing Call; Zhongli, Yelan, Columbina, Linnea
+- Geo Resonance when the party has two or more Geo members
+- Party-wide 4-piece sets on teammates (Noblesse Oblige, Tenacity of the Millelith, Scroll of the Hero of Cinder City)
+  and Thrilling Tales of Dragon Slayers
+- Noelle's own weapon, constellation and burst level (the attack talent stays standardized)
+
+Teammates whose kit isn't modeled yet still count through their sets, weapon and element, and are flagged in the UI.
+Entries are recalculated on boot like the regular ranks.
+
+
 
 ```bash
 cp .env.example .env   # set DATABASE_URL, and the Upstash credentials if you have them

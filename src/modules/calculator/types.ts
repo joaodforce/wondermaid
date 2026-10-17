@@ -86,10 +86,12 @@ export interface NoelleBuild {
 export interface TeamConfig {
   /** Shielded +15% DMG and -20% Geo RES */
   geoResonance?: boolean;
-  /** Assumes 3 Geo party members (Crunch state) */
-  gorou?: { constellation: number };
-  /** `fanfare` defaults to a typical average for her constellation */
-  furina?: { constellation: number; fanfare?: number };
+  /** `skillLevel` defaults to 10 (13 from C3); `geoCount` (Geo members incl. Noelle) defaults to 3 */
+  gorou?: { constellation: number; skillLevel?: number; geoCount?: number };
+  /** `fanfare` defaults to a typical average for her constellation; `burstLevel` to 10 (13 from C3) */
+  furina?: { constellation: number; fanfare?: number; burstLevel?: number };
+  /** Burst ATK bonus from Bennett's base ATK */
+  bennett?: { constellation: number; baseAtk: number; burstLevel: number };
   yelan?: boolean;
   zhongli?: boolean;
   /** `atk` is Xianyun's ATK, which drives her plunge flat DMG; `craneRefinement` is Crane's Echoing Call */
@@ -100,13 +102,19 @@ export interface TeamConfig {
   moonsign?: number;
   /** Marechaussee Hunter stacks; defaults to 3 with Furina, 0 otherwise */
   marechausseeStacks?: number;
+  /** Other buffs, e.g. from teammates' artifact sets and weapons */
+  extraBuffs?: { stat: ExtraBuffStat; value: number; source: string; note?: string }[];
 }
+
+export type ExtraBuffStat = 'atkPercent' | 'flatAtk' | 'defPercent' | 'flatDef' | 'critRate' | 'critDmg' | 'dmgBonus' | 'resShred';
 
 export interface Scenario {
   attackType: AttackType;
   team: TeamConfig;
   /** Weapon every build is evaluated with; without it the player's own weapon is used */
   weapon?: { id: number; refinement: number };
+  /** Noelle's real constellation and burst level; without it she is evaluated as C6 with burst level 13 */
+  noelle?: { constellation: number; burstLevel: number };
 }
 
 export interface DamageBreakdown {
