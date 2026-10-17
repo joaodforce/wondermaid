@@ -2,6 +2,7 @@ import { LogOut, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { logoutAction } from '@/app/actions/auth';
+import { isSuperAdmin } from '@/modules/admin/services';
 import { getCurrentUser } from '@/modules/auth/session';
 
 const linkClass = 'rounded-lg px-2 py-1.5 text-sm font-medium whitespace-nowrap text-ink/80 hover:bg-ink/10 hover:text-ink sm:px-3';
@@ -41,6 +42,11 @@ async function UserMenu() {
   }
   return (
     <div className="flex items-center gap-1">
+      {isSuperAdmin(user) && (
+        <Link href="/admin/import" className={linkClass}>
+          Admin
+        </Link>
+      )}
       <Link href="/account" className={`${linkClass} inline-flex items-center gap-1.5`}>
         <UserRound className="h-4 w-4" aria-hidden />
         {user.username}

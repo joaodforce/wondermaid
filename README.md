@@ -97,6 +97,13 @@ npm run dev
 | `npm run leaderboard:recalculate` | Recompute all ranks |
 | `npm run leaderboard:backfill` | Fetch ranks from Enka for players that have none (`-- --all` for everyone) |
 
+## Admin: bulk UID import
+
+`/admin/import` (only for the `joaodforce` account, `SUPER_ADMIN_USERNAME` in `src/modules/admin/services.ts`;
+everyone else gets a 404) takes a pasted list of UIDs in any format and imports each one like a normal leaderboard
+submission. The browser works through the list one UID at a time with a configurable pause (5s by default) so Enka
+isn't flooded, and retries a rate-limited UID once after a minute. Keep the tab open while it runs.
+
 ## Deploying
 
 ### Environments
