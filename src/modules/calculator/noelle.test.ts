@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { ARTIFACT_SET_IDS, WEAPON_IDS } from './data';
-import { calculateNoelleDamage, enemyDefMultiplier, enemyResMultiplier } from './noelle';
+import { calculateNoelleDamage, enemyDefMultiplier, enemyResMultiplier, explainNoelleDamage } from './noelle';
 import type { NoelleBuild } from './types';
 
 const build: NoelleBuild = {
@@ -111,5 +111,30 @@ describe('calculateNoelleDamage', () => {
     const result = calculateNoelleDamage(build, { attackType: 'Na4', team: { columbina: { constellation: 0 }, linnea: true } });
     const res = enemyResMultiplier(0.1 - 0.35);
     close(result.lunarCrystallizeDmg, 1446.85 * 0.96 * 0.21 * (1 + 0.4) * res * (1 + 0.6 * 1.5));
+  });
+});
+
+describe('explainNoelleDamage', () => {
+  const scenario = {
+    attackType: 'Na4' as const,
+    team: { geoResonance: true, gorou: { constellation: 6 }, furina: { constellation: 0 } },
+    weapon: { id: WEAPON_IDS.redhornStonethresher, refinement: 1 },
+  };
+  const explanation = explainNoelleDamage(build, scenario);
+
+  it('lists every buff that makes up the totals', () => {
+    for (const [stat, total] of Object.entries(explanation.buffs)) {
+      const sum = explanation.entries.filter((e) => e.stat === stat).reduce((acc, e) => acc + e.value, 0);
+      close(sum, total);
+    }
+    assert.ok(explanation.entries.some((e) => e.origin === 'artifacts' && e.source === 'Husk of Opulent Dreams (4)'));
+    assert.ok(explanation.entries.some((e) => e.origin === 'weapon' && e.stat === 'flatDmg'));
+    assert.ok(explanation.entries.some((e) => e.origin === 'team' && e.source === 'Gorou C6'));
+  });
+
+  it('multiplies out to the ranked damage', () => {
+    const e = explanation;
+    close(e.hitDamage, e.baseDamage * (1 + e.dmgBonus) * e.critMultiplier * e.enemyDefMultiplier * e.enemyResMultiplier);
+    close(e.finalDamage, calculateNoelleDamage(build, scenario).finalDamage);
   });
 });

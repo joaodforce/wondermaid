@@ -1,12 +1,12 @@
 import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { enkaProfiles, leaderboardRanks, noelleBuilds, players, scenarios } from '@/db/schema';
-import { calculateNoelleDamage } from '@/modules/calculator/noelle';
+import { calculateNoelleDamage, explainNoelleDamage } from '@/modules/calculator/noelle';
 import type { NoelleBuild } from '@/modules/calculator/types';
 import { fetchPlayerData } from '@/modules/enka/client';
 import { findNoelle, parseNoelleBuild, parsePlayerProfile } from '@/modules/enka/mapper';
 import { listActiveScenarios, toScenario, toScenarioSummary } from './scenarios';
-import type { LeaderboardEntry, LeaderboardResponse, PlayerBuildPage, ScenarioResult } from './types';
+import type { LeaderboardEntry, LeaderboardResponse, PlayerBuildPage, PlayerDamagePage, ScenarioResult } from './types';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -257,5 +257,37 @@ export async function getPlayerBuild(uid: string): Promise<PlayerBuildPage | nul
     build: row.build,
     updatedAt: row.calculatedAt.toISOString(),
     scenarios: scenarioResults,
+  };
+}
+
+/** A player's damage on one scenario, worked out step by step from their stored build. */
+export async function getDamageExplanation(uid: string, scenarioId: string): Promise<PlayerDamagePage | null> {
+  const [[row], [scenario]] = await Promise.all([
+    db
+      .select({ nickname: players.nickname, build: noelleBuilds.statsJson, calculatedAt: noelleBuilds.calculatedAt })
+      .from(players)
+      .innerJoin(noelleBuilds, eq(noelleBuilds.uid, players.uid))
+      .where(eq(players.uid, uid))
+      .orderBy(desc(noelleBuilds.calculatedAt))
+      .limit(1),
+    db
+      .select()
+      .from(scenarios)
+      .where(and(eq(scenarios.id, scenarioId), eq(scenarios.isActive, true)))
+      .limit(1),
+  ]);
+  if (!row?.build?.stats || !scenario) return null;
+
+  const [position] = await getPlayerRanks(uid, [scenario.id]);
+  return {
+    uid,
+    nickname: row.nickname,
+    updatedAt: row.calculatedAt.toISOString(),
+    scenario: toScenarioSummary(scenario),
+    team: scenario.teamConfigJson,
+    build: row.build,
+    explanation: explainNoelleDamage(row.build, toScenario(scenario)),
+    rank: position?.rank ?? 0,
+    total: position?.total ?? 0,
   };
 }

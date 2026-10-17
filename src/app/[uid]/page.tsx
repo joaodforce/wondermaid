@@ -8,8 +8,8 @@ import { CharacterCard } from '@/components/build/character-card';
 import { RefreshBuildButton } from '@/components/build/refresh-build-button';
 import { ShareActions } from '@/components/build/share-actions';
 import { ScenarioResults } from '@/components/build/scenario-results';
+import { LocalTime } from '@/components/local-time';
 import { VersionBadge } from '@/components/version-badge';
-import { formatDateTime } from '@/lib/format';
 import { getPlayerBuild } from '@/modules/leaderboard/services';
 
 const UID_PATTERN = /^\d{9,10}$/;
@@ -61,7 +61,7 @@ async function PlayerBuild({ uid }: { uid: string }) {
           <h1 className="text-4xl font-black tracking-tight text-ink sm:text-5xl">{player.nickname}</h1>
           <p className="mt-1 text-sm text-ink/75">
             UID <span className="font-mono">{player.uid}</span>
-            {player.level != null && <> · AR {player.level}</>} · Updated {formatDateTime(player.updatedAt)}
+            {player.level != null && <> · AR {player.level}</>} · Updated <LocalTime iso={player.updatedAt} />
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
@@ -84,7 +84,7 @@ async function PlayerBuild({ uid }: { uid: string }) {
         </p>
       )}
 
-      <ScenarioResults scenarios={player.scenarios} />
+      <ScenarioResults uid={player.uid} scenarios={player.scenarios} />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-bold text-ink">Share card</h2>

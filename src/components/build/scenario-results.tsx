@@ -1,13 +1,14 @@
+import Link from 'next/link';
 import { formatNumber, formatPercent } from '@/lib/format';
 import { weaponName } from '@/modules/calculator/data';
 import type { PlayerScenarioResult } from '@/modules/leaderboard/types';
 
-export function ScenarioResults({ scenarios }: { scenarios: PlayerScenarioResult[] }) {
+export function ScenarioResults({ uid, scenarios }: { uid: string; scenarios: PlayerScenarioResult[] }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-black/30 bg-ink shadow-2xl shadow-black/30">
       <div className="border-b border-white/10 px-5 py-3">
         <h2 className="font-semibold text-stone-100">Leaderboard results</h2>
-        <p className="text-xs text-stone-500">Ranked with each team&apos;s fixed weapon, so only artifacts count.</p>
+        <p className="text-xs text-stone-500">Ranked with each team&apos;s fixed weapon, so only artifacts count. Click a damage number to see how it&apos;s calculated.</p>
       </div>
       {scenarios.length === 0 ? (
         <p className="p-6 text-center text-sm text-stone-400">No results yet. Update the build to rank it.</p>
@@ -53,7 +54,13 @@ export function ScenarioResults({ scenarios }: { scenarios: PlayerScenarioResult
                     {scenario.breakdown ? formatPercent(scenario.breakdown.dmgBonus) : '–'}
                   </td>
                   <td className="px-5 py-3 text-right font-mono text-base font-bold text-amber-400">
-                    {formatNumber(scenario.finalDamage)}
+                    <Link
+                      href={`/${uid}/calc/${scenario.id}`}
+                      title="See how this damage is calculated"
+                      className="underline decoration-amber-400/30 decoration-dotted underline-offset-4 hover:text-amber-300 hover:decoration-amber-300"
+                    >
+                      {formatNumber(scenario.finalDamage)}
+                    </Link>
                   </td>
                 </tr>
               ))}
