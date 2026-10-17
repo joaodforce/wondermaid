@@ -34,6 +34,10 @@ artifact stats and 2-piece stat bonuses. The calculator only adds what the chara
 
 The result is the crit-averaged damage of one hit.
 
+Every buff is recorded with its source as it's applied (`BuffLedger` in `src/modules/calculator/team.ts`), and
+`explainNoelleDamage` returns each intermediate value. The ranked number is derived from that same explanation, and
+`/{uid}/calc/{scenarioId}` (linked from every damage number) shows it step by step so members can audit the math.
+
 ## Scenarios
 
 Scenarios live in the `scenarios` table. The defaults in `src/modules/leaderboard/scenarios.ts` are inserted on first
