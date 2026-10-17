@@ -55,3 +55,4 @@ npm run dev
 | `npm run db:generate` | Create a migration in `drizzle/` from `src/db/schema` |
 | `npm run db:migrate` | Apply migrations |
 | `npm run leaderboard:recalculate` | Recompute all ranks |
+| `npm run leaderboard:backfill` | Fetch ranks from Enka for players that have none (`-- --all` for everyone) |

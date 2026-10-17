@@ -11,7 +11,8 @@
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "leaderboard:recalculate": "tsx scripts/recalculate-ranks.ts"
+    "leaderboard:recalculate": "tsx scripts/recalculate-ranks.ts",
+    "leaderboard:backfill": "tsx scripts/backfill-players.ts"
   },
   "dependencies": {
     "@upstash/redis": "^1.39.0",
