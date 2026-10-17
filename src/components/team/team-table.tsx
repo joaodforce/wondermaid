@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { Fragment, useState } from 'react';
 import { formatNumber, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { addedDamage, type TeamAttack } from '@/modules/go/types';
 import type { TeamShowcaseEntry } from '@/modules/team/services';
 import { MemberCard, Portrait } from './member-card';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
-const ATTACK_LABELS: Record<string, string> = { Na4: 'N4', Ca: 'Charged', Plunge: 'Plunge' };
+const ATTACK_LABELS: Record<TeamAttack, string> = { Na4: 'N4', Plunge: 'Plunge' };
 
 export function TeamTable({ entries, highlightUid }: { entries: TeamShowcaseEntry[]; highlightUid?: string }) {
   const [expanded, setExpanded] = useState<string | null>(highlightUid ?? null);
@@ -87,11 +88,11 @@ export function TeamTable({ entries, highlightUid }: { entries: TeamShowcaseEntr
                     </div>
                   </td>
                   <td className="hidden px-3 py-3 text-right font-mono whitespace-nowrap md:table-cell sm:px-4">
-                    {formatPercent(entry.breakdown.critRate)} / {formatPercent(entry.breakdown.critDmg)}
+                    {formatPercent(entry.calculation.stats.critRate)} / {formatPercent(entry.calculation.stats.critDmg)}
                   </td>
                   <td className="px-3 py-3 text-right sm:px-4">
                     <span className="font-mono text-base font-bold text-amber-400">{formatNumber(entry.finalDamage)}</span>
-                    <p className="text-xs text-stone-500">{ATTACK_LABELS[entry.attackType] ?? entry.attackType}</p>
+                    <p className="text-xs text-stone-500">{ATTACK_LABELS[entry.calculation.attack]}</p>
                   </td>
                   <td className="hidden px-2 py-3 sm:table-cell">
                     <button
@@ -112,7 +113,7 @@ export function TeamTable({ entries, highlightUid }: { entries: TeamShowcaseEntr
                           <MemberCard
                             key={member.id}
                             build={member}
-                            modeled={index === 0 ? undefined : entry.effects[index - 1]?.modeled}
+                            addedDamage={index === 0 ? undefined : addedDamage(entry.calculation, index)}
                           />
                         ))}
                       </div>

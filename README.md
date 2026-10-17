@@ -60,17 +60,20 @@ presses Verify: the bio is read through Enka (skipping our cache) and, if it con
 them (`src/modules/accounts/`). Whoever can edit the bio owns the UID, so a later verified claim takes it over.
 
 Owners can submit a **Team Showcase** entry: Noelle plus three supports from their showcase. Allowed supports are in
-`SUPPORT_ALLOWLIST` (`src/modules/team/characters.ts`); main DPS units are left out. The team's buffs come from the
-teammates' real builds (`teamScenario` in `src/modules/team/party.ts`):
+`SUPPORT_ALLOWLIST` (`src/modules/team/characters.ts`); main DPS units are left out.
 
-- Gorou's skill level, constellation and the party's actual Geo count; Furina's burst level and constellation;
-  Bennett's base ATK, burst level and C1; Xianyun's ATK and Crane's Echoing Call; Zhongli, Yelan, Columbina, Linnea
-- Geo Resonance when the party has two or more Geo members
-- Party-wide 4-piece sets on teammates (Noblesse Oblige, Tenacity of the Millelith, Scroll of the Hero of Cinder City)
-  and Thrilling Tales of Dragon Slayers
-- Noelle's own weapon, constellation and burst level (the attack talent stays standardized)
+Team Showcase damage is calculated on [Genshin Optimizer](https://github.com/frzyc/genshin-optimizer)'s formula
+engine (MIT), vendored under `vendor/genshin-optimizer/` (see its README for the source commit and how to update it).
+Every member is converted from Enka to GO's GOOD format (`src/modules/go/good.ts`, keys in `src/modules/go/keys.ts`)
+with their real level, constellation, talents, weapon and artifacts, and `calculateTeam` (`src/modules/go/team.ts`)
+ranks Noelle's crit-averaged N4, or a high plunge when Xianyun is in the party, against a level 100 enemy.
 
-Teammates whose kit isn't modeled yet still count through their sets, weapon and element, and are flagged in the UI.
+Situational effects (GO "conditionals") are switched on per character in `CHARACTER_PRESETS`
+(`src/modules/go/presets.ts`); weapons, artifact sets and characters without a preset get every effect on with stacks
+at their max. A test checks every preset name against GO's metadata, since GO silently ignores unknown names.
+The breakdown page lists those assumptions and how much Noelle's damage drops without each teammate.
+
+Adding a support to the allowlist only needs a preset when the generic "everything on" isn't right for them.
 Entries are recalculated on boot like the regular ranks.
 
 
