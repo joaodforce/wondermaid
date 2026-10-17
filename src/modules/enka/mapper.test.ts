@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { EnkaError, type EnkaAvatar, type EnkaEquip, type EnkaResponse } from './types';
+import { artifactSetName } from '@/modules/calculator/data';
 import { findNoelle, parseNoelleBuild, parsePlayerProfile } from './mapper';
 
 // Relic icon suffixes: _1 goblet, _2 plume, _3 circlet, _4 flower, _5 sands
@@ -153,5 +154,13 @@ describe('parsePlayerProfile', () => {
       level: 60,
       profilePictureId: 3401,
     });
+  });
+});
+
+describe('artifactSetName', () => {
+  it('names off-pieces from any set', () => {
+    assert.equal(artifactSetName(15002), 'Viridescent Venerer');
+    assert.equal(artifactSetName(10003), "Defender's Will");
+    assert.equal(artifactSetName(15048), 'Heart of the Furnace');
   });
 });

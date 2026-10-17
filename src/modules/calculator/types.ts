@@ -105,6 +105,8 @@ export interface TeamConfig {
 export interface Scenario {
   attackType: AttackType;
   team: TeamConfig;
+  /** Weapon every build is evaluated with; without it the player's own weapon is used */
+  weapon?: { id: number; refinement: number };
 }
 
 export interface DamageBreakdown {

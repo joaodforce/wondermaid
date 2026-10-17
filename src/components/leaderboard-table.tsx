@@ -6,9 +6,9 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { apiFetch, errorMessage } from '@/lib/api';
 import { formatArtifactSets, formatNumber, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { weaponName } from '@/modules/calculator/data';
 import type { LeaderboardResponse, ScenarioSummary } from '@/modules/leaderboard/types';
 import { useLeaderboardSync } from './leaderboard-sync';
+import { TeamComposition } from './team-composition';
 
 const ATTACK_LABELS = { Na4: 'Normal Attack 4', Ca: 'Charged Attack', Plunge: 'Plunging Attack' } as const;
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -81,6 +81,8 @@ export function LeaderboardTable({
         {selected.description} · <span className="text-stone-500">{ATTACK_LABELS[selected.attackType]} damage</span>
       </p>
 
+      <TeamComposition scenario={selected} />
+
       <div className="relative">
         {failed ? (
           <EmptyState>
@@ -103,8 +105,7 @@ export function LeaderboardTable({
                   <th className="px-3 py-3 sm:px-4">Rank</th>
                   <th className="px-3 py-3 sm:px-4">Player</th>
                   <th className="hidden px-3 py-3 sm:px-4 sm:table-cell">UID</th>
-                  <th className="hidden px-3 py-3 sm:px-4 sm:table-cell">Weapon</th>
-                  <th className="hidden px-3 py-3 sm:px-4 lg:table-cell">Artifacts</th>
+                  <th className="hidden px-3 py-3 sm:px-4 sm:table-cell">Artifacts</th>
                   <th className="hidden px-3 py-3 sm:px-4 text-right md:table-cell">DEF</th>
                   <th className="hidden px-3 py-3 sm:px-4 text-right md:table-cell">Crit</th>
                   <th className="px-3 py-3 sm:px-4 text-right">Damage</th>
@@ -131,14 +132,11 @@ export function LeaderboardTable({
                         C{entry.constellation}
                       </span>
                       <span className="block text-xs font-normal whitespace-normal text-stone-500 sm:hidden">
-                        {weaponName(entry.weaponId)} R{entry.weaponRefinement} · {entry.uid}
+                        {formatArtifactSets(entry.artifactSets)} · {entry.uid}
                       </span>
                     </td>
                     <td className="hidden px-3 py-3 sm:px-4 font-mono text-stone-400 sm:table-cell">{entry.uid}</td>
-                    <td className="hidden px-3 py-3 sm:px-4 whitespace-nowrap sm:table-cell">
-                      {weaponName(entry.weaponId)} <span className="text-stone-500">R{entry.weaponRefinement}</span>
-                    </td>
-                    <td className="hidden max-w-64 truncate px-3 py-3 sm:px-4 text-stone-400 lg:table-cell">
+                    <td className="hidden max-w-72 truncate px-3 py-3 sm:px-4 text-stone-400 sm:table-cell">
                       {formatArtifactSets(entry.artifactSets)}
                     </td>
                     <td className="hidden px-3 py-3 sm:px-4 text-right font-mono md:table-cell">

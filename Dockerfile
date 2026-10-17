@@ -20,7 +20,7 @@ ARG NEXT_PUBLIC_APP_ENV=
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION \
     NEXT_PUBLIC_GIT_SHA=$NEXT_PUBLIC_GIT_SHA \
     NEXT_PUBLIC_APP_ENV=$NEXT_PUBLIC_APP_ENV
-RUN npm run build && npm run db:migrate:bundle
+RUN npm run build && npm run db:migrate:bundle && npm run leaderboard:recalculate:bundle
 
 # One-off image for `npm run db:migrate`, `leaderboard:recalculate` and `leaderboard:backfill`:
 #   docker build --target tools -t wondermaid-tools .
@@ -33,7 +33,7 @@ COPY scripts ./scripts
 COPY src ./src
 CMD ["npm", "run", "db:migrate"]
 
-# Minimal production image (default target); applies pending migrations on boot
+# Minimal production image (default target); applies pending migrations and recalculates ranks on boot
 FROM base AS runner
 ARG NEXT_PUBLIC_APP_VERSION=
 ARG NEXT_PUBLIC_GIT_SHA=unknown
@@ -50,6 +50,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/dist/migrate.cjs ./migrate.cjs
+COPY --from=builder --chown=nextjs:nodejs /app/dist/recalculate.cjs ./recalculate.cjs
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
