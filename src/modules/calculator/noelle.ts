@@ -1,6 +1,7 @@
 import { ARTIFACT_SET_IDS, WEAPON_IDS } from './data';
 import { applyTeamBuffs, emptyBuffs, type Buffs } from './team';
 import type { AttackType, DamageBreakdown, NoelleBuild, Scenario, TeamConfig } from './types';
+import { withFixedWeapon } from './weapons';
 
 // Builds are compared on equal footing: every Noelle is treated as C6 with burst level 13
 // (Sweeping Time converts 85% DEF to ATK, plus 50% from C6) and the same attack talent levels.
@@ -95,7 +96,8 @@ function lunarCrystallizeDamage(build: NoelleBuild, team: TeamConfig, buffs: Buf
 }
 
 /** Average (crit-weighted) damage of one hit of `scenario.attackType` against a level 100 enemy. */
-export function calculateNoelleDamage(build: NoelleBuild, scenario: Scenario): DamageBreakdown {
+export function calculateNoelleDamage(playerBuild: NoelleBuild, scenario: Scenario): DamageBreakdown {
+  const build = scenario.weapon ? withFixedWeapon(playerBuild, scenario.weapon) : playerBuild;
   const { stats } = build;
   const { attackType, team } = scenario;
 

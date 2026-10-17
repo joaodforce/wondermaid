@@ -13,6 +13,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:migrate:bundle": "esbuild src/db/migrate.ts --bundle --platform=node --target=node24 --format=cjs --outfile=dist/migrate.cjs",
     "leaderboard:recalculate": "tsx scripts/recalculate-ranks.ts",
+    "leaderboard:recalculate:bundle": "esbuild scripts/recalculate-ranks.ts --bundle --platform=node --target=node24 --format=cjs --outfile=dist/recalculate.cjs",
     "leaderboard:backfill": "tsx scripts/backfill-players.ts"
   },
   "dependencies": {

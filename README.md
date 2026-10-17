@@ -20,6 +20,10 @@ artifact stats and 2-piece stat bonuses. The calculator only adds what the chara
 
 - **Noelle**: everyone is treated as C6 with burst level 13 (135% DEF to ATK), C2's Charged Attack bonus and fixed
   motion values (N4 224.2%, CA 100.3%, plunge 368.2%), so only gear decides the ranking.
+- **Fixed weapon per team**: every build is ranked with its team's weapon (`scenarios.weapon_id` /
+  `weapon_refinement`, Redhorn Stonethresher R1 by default), so only artifacts decide the order. The player's own
+  weapon's base ATK, substat and static passive are taken out of Enka's totals and the fixed weapon's are put in
+  (`src/modules/calculator/weapons.ts`). Redhorn, Whiteblind and Serpent Spine can be assigned.
 - **Weapons**: Whiteblind (4 stacks, Normal/Charged only), Serpent Spine (5 stacks), Redhorn's DEF-based flat DMG
   (not on plunges), all by refinement.
 - **Artifacts**: Husk of Opulent Dreams (4 stacks), Marechaussee Hunter (2-piece, and 3 stacks with Furina),
@@ -35,7 +39,11 @@ The result is the crit-averaged damage of one hit.
 Scenarios live in the `scenarios` table. The defaults in `src/modules/leaderboard/scenarios.ts` are inserted on first
 use and never overwritten, so a scenario can be edited (`team_config_json`, see `TeamConfig` in
 `src/modules/calculator/types.ts`) or hidden (`is_active = false`) in the database. After changing scenarios or the
-calculator, run `npm run leaderboard:recalculate` to recompute every rank from the stored builds.
+calculator, ranks are recomputed from the stored builds when the Docker image boots (or run
+`npm run leaderboard:recalculate`).
+
+The full Enka response from each player's latest update is kept in `enka_profiles.response_json`, so new features can
+use fields we don't parse yet without players updating again.
 
 ## Getting started
 
@@ -85,7 +93,8 @@ allow read and write so the workflow can push the release commit, tag and image.
 ### Run it
 
 The image runs pending migrations on boot (`docker-entrypoint.sh`, retried `MIGRATION_RETRIES` times, default 5;
-`SKIP_MIGRATIONS=true` skips them) and then starts the standalone Next.js server on port 3000. Give each environment
+`SKIP_MIGRATIONS=true` skips them), recalculates every rank so calculator and scenario changes apply to existing
+players (`SKIP_RECALCULATION=true` skips it) and then starts the standalone Next.js server on port 3000. Give each environment
 its own database and env file (never committed):
 
 ```bash

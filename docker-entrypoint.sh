@@ -16,4 +16,10 @@ if [ "${SKIP_MIGRATIONS:-false}" != "true" ]; then
   done
 fi
 
+# Recompute every rank with the calculator and scenarios this release ships, so changes to either
+# apply to existing players without them having to update
+if [ "${SKIP_RECALCULATION:-false}" != "true" ]; then
+  node /app/recalculate.cjs || echo "[entrypoint] Rank recalculation failed, serving existing ranks" >&2
+fi
+
 exec "$@"

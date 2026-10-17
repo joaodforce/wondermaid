@@ -1,10 +1,14 @@
 import { formatNumber, formatPercent } from '@/lib/format';
+import { weaponName } from '@/modules/calculator/data';
 import type { PlayerScenarioResult } from '@/modules/leaderboard/types';
 
 export function ScenarioResults({ scenarios }: { scenarios: PlayerScenarioResult[] }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-black/30 bg-ink shadow-2xl shadow-black/30">
-      <h2 className="border-b border-white/10 px-5 py-3 font-semibold text-stone-100">Leaderboard results</h2>
+      <div className="border-b border-white/10 px-5 py-3">
+        <h2 className="font-semibold text-stone-100">Leaderboard results</h2>
+        <p className="text-xs text-stone-500">Ranked with each team&apos;s fixed weapon, so only artifacts count.</p>
+      </div>
       {scenarios.length === 0 ? (
         <p className="p-6 text-center text-sm text-stone-400">No results yet. Update the build to rank it.</p>
       ) : (
@@ -26,7 +30,9 @@ export function ScenarioResults({ scenarios }: { scenarios: PlayerScenarioResult
                 <tr key={scenario.id}>
                   <td className="px-5 py-3">
                     <p className="font-medium text-stone-100">{scenario.name}</p>
-                    <p className="text-xs text-stone-500">{scenario.description}</p>
+                    <p className="text-xs text-stone-500">
+                      {scenario.description} · {weaponName(scenario.weapon.id)} R{scenario.weapon.refinement}
+                    </p>
                   </td>
                   <td className="px-3 py-3 text-right font-mono whitespace-nowrap">
                     #{scenario.rank}
