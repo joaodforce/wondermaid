@@ -1,11 +1,16 @@
 import 'dotenv/config';
 import { recalculateAllRanks } from '@/modules/leaderboard/services';
+import { recalculateTeamShowcases } from '@/modules/team/services';
 
-recalculateAllRanks()
-  .then(({ updated, skipped }) => {
-    console.log(`Recalculated ranks for ${updated} builds (${skipped} legacy builds skipped)`);
-    process.exit(0);
-  })
+async function main() {
+  const { updated, skipped } = await recalculateAllRanks();
+  console.log(`Recalculated ranks for ${updated} builds (${skipped} legacy builds skipped)`);
+  const teams = await recalculateTeamShowcases();
+  console.log(`Recalculated ${teams} Team Showcase entries`);
+}
+
+main()
+  .then(() => process.exit(0))
   .catch((error) => {
     console.error('Recalculation failed:', error);
     process.exit(1);

@@ -10,14 +10,14 @@ import { VersionBadge } from '@/components/version-badge';
 export default function HomePage() {
   return (
     <div className="relative flex flex-1 flex-col overflow-x-clip">
-      {/* The art shares the page's olive backdrop (its own was keyed out), so it bleeds off the top/right edges */}
+      {/* The art shares the page's olive backdrop (its own was keyed out), so it bleeds off the top/right edges behind the nav */}
       <Image
         src={noelleArt}
         alt="Noelle swinging Redhorn Stonethresher, drawn for the Noelle Mains community"
         loading="eager"
         fetchPriority="high"
         sizes="(min-width: 1024px) min(58vw, 880px), 100vw"
-        className="art-fade pointer-events-none -mb-24 h-auto w-full max-w-none select-none sm:-mb-48 lg:absolute lg:top-0 lg:right-0 lg:mb-0 lg:w-[min(58vw,880px)]"
+        className="art-fade pointer-events-none -mt-14 -mb-24 h-auto w-full max-w-none select-none sm:-mb-48 lg:absolute lg:-top-14 lg:right-0 lg:mt-0 lg:mb-0 lg:w-[min(58vw,880px)]"
       />
 
       <main className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 pb-16 sm:px-6 lg:pt-20">

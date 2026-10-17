@@ -1,7 +1,8 @@
-import { Redis } from '@upstash/redis';
+import { getRedis } from '@/lib/redis';
 import { EnkaError, type EnkaErrorCode, type EnkaResponse } from './types';
 
-const ENKA_API_URL = 'https://enka.network/api/uid';
+// Overridable to point PRE or local runs at a mock showcase server
+const ENKA_API_URL = process.env.ENKA_API_URL || 'https://enka.network/api/uid';
 const USER_AGENT = 'NoelleMainsLeaderboard/1.0';
 // Enka asks clients to cache showcase data instead of re-requesting it; this also absorbs repeat submissions
 const CACHE_TTL_SECONDS = 300;
@@ -13,18 +14,6 @@ const STATUS_ERRORS: Record<number, [EnkaErrorCode, string]> = {
   424: ['MAINTENANCE', 'Enka.Network is unavailable during game maintenance. Try again later.'],
   429: ['RATE_LIMITED', 'Enka.Network is rate limiting requests. Try again in a minute.'],
 };
-
-let redis: Redis | null | undefined;
-
-// The cache is optional so the app also runs without Upstash credentials (every lookup then hits Enka)
-function getRedis(): Redis | null {
-  if (redis === undefined) {
-    const { UPSTASH_REDIS_REST_URL: url, UPSTASH_REDIS_REST_TOKEN: token } = process.env;
-    redis = url && token ? new Redis({ url, token }) : null;
-    if (!redis) console.warn('[enka] Upstash Redis is not configured; Enka responses will not be cached');
-  }
-  return redis;
-}
 
 const cacheKey = (uid: string) => `enka:uid:${uid}`;
 
@@ -46,8 +35,9 @@ async function writeCache(uid: string, data: EnkaResponse) {
 }
 
 /** Showcase data for a UID, served from Redis for 5 minutes after each Enka request. Throws `EnkaError`. */
-export async function fetchPlayerData(uid: string): Promise<EnkaResponse> {
-  const cached = await readCache(uid);
+// `fresh` skips our cache (Enka may still serve its own copy until its `ttl` runs out), e.g. to see a just-edited bio
+export async function fetchPlayerData(uid: string, { fresh = false } = {}): Promise<EnkaResponse> {
+  const cached = fresh ? null : await readCache(uid);
   if (cached) return cached;
 
   let data: EnkaResponse;

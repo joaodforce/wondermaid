@@ -8,6 +8,8 @@ export interface EnkaResponse {
   playerInfo?: {
     nickname?: string;
     level?: number;
+    /** The in-game bio, used to verify account ownership */
+    signature?: string;
     profilePicture?: { avatarId?: number; id?: number };
   };
   /** Missing when the player hides character details */
