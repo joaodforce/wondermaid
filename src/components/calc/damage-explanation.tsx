@@ -73,7 +73,7 @@ function entryTone(entry: BuffEntry, weaponSwapped: boolean): Tone {
 const sheetTone = (e: DamageExplanation, key: keyof NoelleStats): Tone =>
   e.weaponSwapped && Math.abs(e.sheet[key] - e.playerSheet[key]) > 1e-9 ? 'weapon' : 'user';
 
-function Panel({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
+export function Panel({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-black/30 bg-ink shadow-2xl shadow-black/30">
       <div className="border-b border-white/10 px-5 py-3">

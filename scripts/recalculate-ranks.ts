@@ -6,7 +6,7 @@ async function main() {
   const { updated, skipped } = await recalculateAllRanks();
   console.log(`Recalculated ranks for ${updated} builds (${skipped} legacy builds skipped)`);
   const teams = await recalculateTeamShowcases();
-  console.log(`Recalculated ${teams} Team Showcase entries`);
+  console.log(`Recalculated ${teams.updated} Team Showcase entries (${teams.skipped} could not be rebuilt)`);
 }
 
 main()

@@ -42,9 +42,13 @@ export default function TeamShowcasePage({ searchParams }: PageProps<'/team-show
         </section>
 
         <p className="text-xs leading-relaxed text-ink/70">
-          Damage is Noelle&apos;s crit-averaged hit (N4, or a plunge in Xianyun teams) against a level 100 enemy, with
-          the attack talent standardized like the main leaderboard. Teammates whose own kit isn&apos;t modeled yet still
-          count through their artifact set, weapon and element.
+          Damage is Noelle&apos;s crit-averaged hit (N4, or a plunge in Xianyun teams) against a level 100 enemy,
+          calculated on{' '}
+          <a href="https://github.com/frzyc/genshin-optimizer" className="underline hover:text-ink" target="_blank" rel="noreferrer">
+            Genshin Optimizer
+          </a>
+          &apos;s engine from every member&apos;s real level, constellation, talents, weapon and artifacts, with their
+          buffs running.
         </p>
       </main>
       <VersionBadge />
