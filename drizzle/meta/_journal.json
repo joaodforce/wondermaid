@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792196747445,
+      "tag": "0000_futuristic_leech",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792198758677,
+      "tag": "0001_scenario_metadata_and_breakdowns",
+      "breakpoints": true
+    }
+  ]
+}
