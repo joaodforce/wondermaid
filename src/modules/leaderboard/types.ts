@@ -14,6 +14,9 @@ export interface ScenarioSummary {
   members: TeamMember[];
 }
 
+/** Rows per page on the home page board */
+export const LEADERBOARD_PAGE_SIZE = 25;
+
 export interface LeaderboardEntry {
   rank: number;
   uid: string;
@@ -32,6 +35,13 @@ export interface LeaderboardEntry {
 export interface LeaderboardResponse {
   scenario: ScenarioSummary;
   entries: LeaderboardEntry[];
+  /** 1-based, clamped to the pages that exist */
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  /** Builds matching `search` (all of them when it's empty) */
+  total: number;
+  search: string;
 }
 
 export interface ScenarioResult {

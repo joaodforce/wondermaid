@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, like, ne, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { enkaProfiles, leaderboardRanks, noelleBuilds, players, scenarios } from '@/db/schema';
 import { calculateNoelleDamage, explainNoelleDamage } from '@/modules/calculator/noelle';
@@ -55,7 +55,8 @@ async function getPlayerRanks(uid: string, scenarioIds: string[]) {
     .select({
       uid: leaderboardRanks.uid,
       scenarioId: leaderboardRanks.scenarioId,
-      rank: sql<number>`rank() over (partition by ${leaderboardRanks.scenarioId} order by ${leaderboardRanks.finalDamage} desc)`
+      // Same order as the board: ties go to whoever reached the score first
+      rank: sql<number>`row_number() over (partition by ${leaderboardRanks.scenarioId} order by ${leaderboardRanks.finalDamage} desc, ${leaderboardRanks.updatedAt} asc)`
         .mapWith(Number)
         .as('rank'),
       total: sql<number>`count(*) over (partition by ${leaderboardRanks.scenarioId})`.mapWith(Number).as('total'),
@@ -140,33 +141,71 @@ export async function updatePlayerFromEnka(uid: string): Promise<{ nickname: str
   return { nickname: profile.nickname, results };
 }
 
-export async function getLeaderboard(scenarioId: string, limit = 100): Promise<LeaderboardResponse> {
+export interface LeaderboardQuery {
+  /** 1-based page number */
+  page?: number;
+  pageSize?: number;
+  /** Matches nicknames (anywhere, case-insensitive) or the start of a UID */
+  search?: string;
+  /** Opens the page holding this UID instead of `page`, e.g. right after they submit */
+  focusUid?: string;
+}
+
+const escapeLike = (text: string) => text.replace(/[\\%_]/g, (char) => `\\${char}`);
+
+/** One page of a scenario's board. Ranks are overall positions, so a search still shows where players stand. */
+export async function getLeaderboard(
+  scenarioId: string,
+  { page = 1, pageSize = 100, search, focusUid }: LeaderboardQuery = {},
+): Promise<LeaderboardResponse> {
   const [scenario] = await db.select().from(scenarios).where(eq(scenarios.id, scenarioId)).limit(1);
   if (!scenario || !scenario.isActive) throw new LeaderboardError('SCENARIO_NOT_FOUND', 'Scenario not found');
 
-  const rows = await db
+  const ranked = db
     .select({
       uid: players.uid,
       nickname: players.nickname,
       constellation: noelleBuilds.constellation,
       weaponId: noelleBuilds.weaponId,
       weaponRefinement: noelleBuilds.weaponRefinement,
-      artifactSets: sql<Record<number, number> | null>`${noelleBuilds.statsJson} -> 'artifactSets'`,
+      artifactSets: sql<Record<number, number> | null>`${noelleBuilds.statsJson} -> 'artifactSets'`.as('artifact_sets'),
       breakdown: leaderboardRanks.breakdownJson,
       finalDamage: leaderboardRanks.finalDamage,
       updatedAt: leaderboardRanks.updatedAt,
+      // Ties go to whoever reached the score first
+      rank: sql<number>`row_number() over (order by ${leaderboardRanks.finalDamage} desc, ${leaderboardRanks.updatedAt} asc)`
+        .mapWith(Number)
+        .as('rank'),
     })
     .from(leaderboardRanks)
     .innerJoin(players, eq(leaderboardRanks.uid, players.uid))
     .innerJoin(noelleBuilds, eq(leaderboardRanks.buildId, noelleBuilds.id))
     .where(eq(leaderboardRanks.scenarioId, scenarioId))
-    // Ties go to whoever reached the score first
-    .orderBy(desc(leaderboardRanks.finalDamage), asc(leaderboardRanks.updatedAt))
-    .limit(limit);
+    .as('ranked');
 
-  const entries: LeaderboardEntry[] = rows.map(({ breakdown, artifactSets, updatedAt, ...row }, index) => ({
+  const term = search?.trim();
+  const matches = term
+    ? or(ilike(ranked.nickname, `%${escapeLike(term)}%`), like(ranked.uid, `${escapeLike(term)}%`))
+    : undefined;
+
+  const [{ total }] = await db.select({ total: count() }).from(ranked).where(matches);
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  if (focusUid && !term) {
+    const [focused] = await db.select({ rank: ranked.rank }).from(ranked).where(eq(ranked.uid, focusUid));
+    if (focused) page = Math.ceil(focused.rank / pageSize);
+  }
+  page = Math.min(Math.max(page, 1), pageCount);
+
+  const rows = await db
+    .select()
+    .from(ranked)
+    .where(matches)
+    .orderBy(asc(ranked.rank))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+
+  const entries: LeaderboardEntry[] = rows.map(({ breakdown, artifactSets, updatedAt, ...row }) => ({
     ...row,
-    rank: index + 1,
     artifactSets: artifactSets ?? {},
     totalDef: breakdown?.totalDef ?? null,
     critRate: breakdown?.critRate ?? null,
@@ -174,7 +213,7 @@ export async function getLeaderboard(scenarioId: string, limit = 100): Promise<L
     updatedAt: updatedAt.toISOString(),
   }));
 
-  return { scenario: toScenarioSummary(scenario), entries };
+  return { scenario: toScenarioSummary(scenario), entries, page, pageSize, pageCount, total, search: term ?? '' };
 }
 
 /**

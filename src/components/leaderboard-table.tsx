@@ -1,19 +1,29 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { apiFetch, errorMessage } from '@/lib/api';
 import { formatArtifactSets, formatNumber, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { LeaderboardResponse, ScenarioSummary } from '@/modules/leaderboard/types';
+import { LEADERBOARD_PAGE_SIZE, type LeaderboardResponse, type ScenarioSummary } from '@/modules/leaderboard/types';
 import { useLeaderboardSync } from './leaderboard-sync';
 import { TeamComposition } from './team-composition';
 
 const ATTACK_LABELS = { Na4: 'Normal Attack 4', Ca: 'Charged Attack', Plunge: 'Plunging Attack' } as const;
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-type Board = { version: number; data: LeaderboardResponse };
+interface BoardRequest {
+  scenarioId: string;
+  page: number;
+  search: string;
+  /** Asks the server for the page holding this UID */
+  focus?: string;
+}
+
+const SEARCH_DEBOUNCE_MS = 300;
+const requestKey = (request: BoardRequest, version: number) =>
+  `${request.scenarioId}|${request.page}|${request.search}|${request.focus ?? ''}@${version}`;
 
 export function LeaderboardTable({
   scenarios,
@@ -23,37 +33,68 @@ export function LeaderboardTable({
   initial: LeaderboardResponse | null;
 }) {
   const { version, highlightUid } = useLeaderboardSync();
-  const [selectedId, setSelectedId] = useState(initial?.scenario.id ?? scenarios[0]?.id);
-  const [boards, setBoards] = useState<Record<string, Board>>(() =>
-    initial ? { [initial.scenario.id]: { version: 0, data: initial } } : {},
+  const [request, setRequest] = useState<BoardRequest>({
+    scenarioId: initial?.scenario.id ?? scenarios[0]?.id ?? '',
+    page: 1,
+    search: '',
+  });
+  const [searchInput, setSearchInput] = useState('');
+  const [board, setBoard] = useState<{ key: string; data: LeaderboardResponse } | null>(() =>
+    initial ? { key: requestKey(request, 0), data: initial } : null,
   );
   const [error, setError] = useState<{ key: string; message: string } | null>(null);
+  const [seenVersion, setSeenVersion] = useState(version);
+  const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const board = selectedId ? boards[selectedId] : undefined;
-  const requestKey = `${selectedId}@${version}`;
-  const isStale = !board || board.version < version;
-  const failed = error?.key === requestKey;
+  // A new submission clears the search and jumps to the page with the submitted player
+  if (version !== seenVersion) {
+    setSeenVersion(version);
+    setSearchInput('');
+    setRequest((previous) => ({ ...previous, page: 1, search: '', focus: highlightUid ?? undefined }));
+  }
 
-  // Fetches the selected scenario when it was never loaded or a submission made it stale
+  const key = requestKey(request, version);
+  const isStale = board?.key !== key;
+  const failed = error?.key === key;
+
   useEffect(() => {
-    if (!selectedId || !isStale || failed) return;
+    if (!request.scenarioId || !isStale || failed) return;
     const controller = new AbortController();
-    apiFetch<LeaderboardResponse>(`/api/leaderboard?scenarioId=${encodeURIComponent(selectedId)}`, {
-      signal: controller.signal,
-    })
-      .then((data) => setBoards((previous) => ({ ...previous, [selectedId]: { version, data } })))
+    const params = new URLSearchParams({
+      scenarioId: request.scenarioId,
+      page: String(request.page),
+      limit: String(LEADERBOARD_PAGE_SIZE),
+    });
+    if (request.search) params.set('q', request.search);
+    if (request.focus) params.set('focus', request.focus);
+    apiFetch<LeaderboardResponse>(`/api/leaderboard?${params}`, { signal: controller.signal })
+      .then((data) => setBoard({ key, data }))
       .catch((err) => {
-        if (!controller.signal.aborted) setError({ key: requestKey, message: errorMessage(err) });
+        if (!controller.signal.aborted) setError({ key, message: errorMessage(err) });
       });
     return () => controller.abort();
-  }, [selectedId, version, isStale, failed, requestKey]);
+  }, [request, isStale, failed, key]);
+
+  const selectScenario = (scenarioId: string) => setRequest({ scenarioId, page: 1, search: request.search });
+  const goToPage = (page: number) => setRequest({ ...request, page, focus: undefined });
+  const onSearch = (value: string) => {
+    setSearchInput(value);
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(
+      () => setRequest((previous) => ({ ...previous, page: 1, search: value.trim(), focus: undefined })),
+      SEARCH_DEBOUNCE_MS,
+    );
+  };
 
   if (!scenarios.length) {
     return <EmptyState>No scenarios are active yet.</EmptyState>;
   }
 
-  const selected = scenarios.find((scenario) => scenario.id === selectedId) ?? scenarios[0];
-  const entries = board?.data.entries ?? [];
+  const selected = scenarios.find((scenario) => scenario.id === request.scenarioId) ?? scenarios[0];
+  // While a new page loads the previous one stays up, dimmed, unless it was for another scenario
+  const data = board && board.data.scenario.id === selected.id ? board.data : null;
+  const entries = data?.entries ?? [];
+  const first = data ? (data.page - 1) * data.pageSize + 1 : 0;
 
   return (
     <section className="w-full overflow-hidden rounded-2xl border border-black/30 bg-ink shadow-2xl shadow-black/30">
@@ -64,7 +105,7 @@ export function LeaderboardTable({
             type="button"
             role="tab"
             aria-selected={scenario.id === selected.id}
-            onClick={() => setSelectedId(scenario.id)}
+            onClick={() => selectScenario(scenario.id)}
             className={cn(
               '-mb-px shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
               scenario.id === selected.id
@@ -83,6 +124,28 @@ export function LeaderboardTable({
 
       <TeamComposition scenario={selected} />
 
+      <div className="flex flex-wrap items-center gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
+        <label className="relative w-full sm:w-72">
+          <span className="sr-only">Search players</span>
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-stone-500" aria-hidden />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(event) => onSearch(event.target.value)}
+            placeholder="Search by name or UID"
+            maxLength={30}
+            className="h-9 w-full rounded-lg border border-white/10 bg-black/30 pr-3 pl-9 text-sm text-stone-100 outline-none placeholder:text-stone-500 focus:border-amber-400"
+          />
+        </label>
+        {data && (
+          <p className="text-xs text-stone-500" aria-live="polite">
+            {data.search
+              ? `${formatNumber(data.total)} match${data.total === 1 ? '' : 'es'}`
+              : `${formatNumber(data.total)} build${data.total === 1 ? '' : 's'}`}
+          </p>
+        )}
+      </div>
+
       <div className="relative">
         {failed ? (
           <EmptyState>
@@ -91,12 +154,14 @@ export function LeaderboardTable({
               Retry
             </button>
           </EmptyState>
-        ) : !board ? (
+        ) : !data ? (
           <EmptyState>
             <Loader2 className="mx-auto h-5 w-5 animate-spin" aria-label="Loading leaderboard" />
           </EmptyState>
         ) : entries.length === 0 ? (
-          <EmptyState>No builds on this leaderboard yet. Be the first!</EmptyState>
+          <EmptyState>
+            {data.search ? `No players match “${data.search}”.` : 'No builds on this leaderboard yet. Be the first!'}
+          </EmptyState>
         ) : (
           <div className={cn('overflow-x-auto transition-opacity', isStale && 'opacity-60')} aria-busy={isStale}>
             <table className="w-full text-left text-sm text-stone-300">
@@ -163,7 +228,40 @@ export function LeaderboardTable({
           </div>
         )}
       </div>
+
+      {data && data.pageCount > 1 && (
+        <nav aria-label="Leaderboard pages" className="flex items-center justify-between gap-3 border-t border-white/10 px-4 py-3 text-sm sm:px-5">
+          <p className="text-xs text-stone-500">
+            {formatNumber(first)}–{formatNumber(first + entries.length - 1)} of {formatNumber(data.total)}
+          </p>
+          <div className="flex items-center gap-1">
+            <PageButton onClick={() => goToPage(data.page - 1)} disabled={data.page <= 1} label="Previous page">
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+            </PageButton>
+            <span className="px-2 text-xs whitespace-nowrap text-stone-400">
+              Page {data.page} of {data.pageCount}
+            </span>
+            <PageButton onClick={() => goToPage(data.page + 1)} disabled={data.page >= data.pageCount} label="Next page">
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </PageButton>
+          </div>
+        </nav>
+      )}
     </section>
+  );
+}
+
+function PageButton({ onClick, disabled, label, children }: { onClick: () => void; disabled: boolean; label: string; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="grid h-8 w-8 place-items-center rounded-lg text-stone-300 hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent"
+    >
+      {children}
+    </button>
   );
 }
 
