@@ -1,6 +1,7 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { apiFetch, errorMessage } from '@/lib/api';
 import { formatArtifactSets, formatNumber, formatPercent } from '@/lib/format';
@@ -123,7 +124,9 @@ export function LeaderboardTable({
                       {entry.rank}
                     </td>
                     <td className="px-3 py-3 sm:px-4 font-medium whitespace-nowrap text-stone-100">
-                      {entry.nickname}
+                      <Link href={`/${entry.uid}`} className="hover:text-amber-300 hover:underline">
+                        {entry.nickname}
+                      </Link>
                       <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-xs text-stone-400">
                         C{entry.constellation}
                       </span>

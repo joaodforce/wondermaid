@@ -1,4 +1,4 @@
-import type { AttackType } from '@/modules/calculator/types';
+import type { AttackType, DamageBreakdown, NoelleBuild } from '@/modules/calculator/types';
 
 // Shapes shared by the API, the server action and the client components
 
@@ -40,3 +40,19 @@ export interface ScenarioResult {
 export type UpdatePlayerResult =
   | { success: true; uid: string; nickname: string; results: ScenarioResult[] }
   | { success: false; error: string };
+
+export interface PlayerScenarioResult extends ScenarioSummary {
+  finalDamage: number;
+  rank: number;
+  total: number;
+  breakdown: DamageBreakdown | null;
+}
+
+export interface PlayerBuildPage {
+  uid: string;
+  nickname: string;
+  level: number | null;
+  build: NoelleBuild;
+  updatedAt: string;
+  scenarios: PlayerScenarioResult[];
+}
