@@ -26,9 +26,9 @@ export function UidForm() {
   }
 
   return (
-    <section className="w-full rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
-      <h2 className="text-lg font-semibold text-slate-100">Submit your Noelle</h2>
-      <p className="mt-1 text-sm text-slate-400">
+    <section className="w-full rounded-2xl border border-black/30 bg-ink p-6 shadow-2xl shadow-black/30">
+      <h2 className="text-lg font-semibold text-stone-100">Submit your Noelle</h2>
+      <p className="mt-1 text-sm text-stone-400">
         Put Noelle in your in-game character showcase with &quot;Show Character Details&quot; on, then enter your UID.
       </p>
 
@@ -46,12 +46,12 @@ export function UidForm() {
           title="Your 9 or 10 digit Genshin Impact UID"
           required
           disabled={isPending}
-          className="h-11 w-full rounded-lg sm:flex-1 border border-slate-700 bg-slate-950 px-4 font-mono text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/40 focus:outline-none disabled:opacity-50"
+          className="h-11 w-full rounded-lg sm:flex-1 border border-white/15 bg-black/40 px-4 font-mono text-stone-100 placeholder:text-stone-500 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/40 focus:outline-none disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={isPending}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-amber-500 px-6 font-semibold text-slate-950 transition-colors hover:bg-amber-400 disabled:pointer-events-none disabled:opacity-60"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-amber-400 px-6 font-semibold text-stone-950 transition-colors hover:bg-amber-300 disabled:pointer-events-none disabled:opacity-60"
         >
           {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
           {isPending ? 'Calculating…' : 'Update'}

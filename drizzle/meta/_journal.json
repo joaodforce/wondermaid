@@ -15,6 +15,13 @@
       "when": 1792198758677,
       "tag": "0001_scenario_metadata_and_breakdowns",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792200018827,
+      "tag": "0002_legacy_rankings",
+      "breakpoints": true
     }
   ]
 }

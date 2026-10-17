@@ -1,6 +1,6 @@
 {
   "name": "noelle-leaderboard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -11,7 +11,9 @@
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "leaderboard:recalculate": "tsx scripts/recalculate-ranks.ts"
+    "db:migrate:bundle": "esbuild src/db/migrate.ts --bundle --platform=node --target=node24 --format=cjs --outfile=dist/migrate.cjs",
+    "leaderboard:recalculate": "tsx scripts/recalculate-ranks.ts",
+    "leaderboard:backfill": "tsx scripts/backfill-players.ts"
   },
   "dependencies": {
     "@upstash/redis": "^1.39.0",
@@ -32,6 +34,7 @@
     "@types/react-dom": "^19",
     "dotenv": "^18.0.8",
     "drizzle-kit": "^0.31.11",
+    "esbuild": "^0.25.12",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",

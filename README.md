@@ -41,6 +41,7 @@ calculator, run `npm run leaderboard:recalculate` to recompute every rank from t
 
 ```bash
 cp .env.example .env   # set DATABASE_URL, and the Upstash credentials if you have them
+docker compose up -d   # local PostgreSQL, matching the default DATABASE_URL
 npm install
 npm run db:migrate
 npm run dev
@@ -55,3 +56,67 @@ npm run dev
 | `npm run db:generate` | Create a migration in `drizzle/` from `src/db/schema` |
 | `npm run db:migrate` | Apply migrations |
 | `npm run leaderboard:recalculate` | Recompute all ranks |
+| `npm run leaderboard:backfill` | Fetch ranks from Enka for players that have none (`-- --all` for everyone) |
+
+## Deploying
+
+### Environments
+
+| Branch | Environment | Image tags on `ghcr.io/joaodforce/wondermaid` | Site |
+| :-- | :-- | :-- | :-- |
+| `staging` | PRE | `:X.Y.Z`, `:staging`, `:sha-<short>` | e.g. `staging.wondermaid.app` |
+| `master` | PROD | `:latest`, `:sha-<short>` | `wondermaid.app` |
+
+`.github/workflows/deploy.yml` builds and pushes the Docker image on every push to `staging` or `master`. Merge PRs into
+`staging`, check PRE, then merge `staging` into `master` to ship the same version to PROD.
+
+Every push to `staging` cuts a release: `scripts/release-version.mjs` reads the
+[Conventional Commits](https://www.conventionalcommits.org/) since the last `vX.Y.Z` tag (`feat:` → minor,
+`BREAKING CHANGE:` or `type!:` → major, anything else → patch). After the image is pushed, the workflow commits the bump
+as `chore(release): vX.Y.Z` and pushes the tag. Pushes to `master` don't bump; they ship the version from `staging`.
+Run `node scripts/release-version.mjs` locally to preview the next version.
+
+The version, commit and environment (PRE / PROD) are baked into the image and shown in the bottom-right corner of the
+site, so you can tell which release is live.
+
+One-time GitHub setup: create the `staging` branch, and under **Settings → Actions → General → Workflow permissions**
+allow read and write so the workflow can push the release commit, tag and image.
+
+### Run it
+
+The image runs pending migrations on boot (`docker-entrypoint.sh`, retried `MIGRATION_RETRIES` times, default 5;
+`SKIP_MIGRATIONS=true` skips them) and then starts the standalone Next.js server on port 3000. Give each environment
+its own database and env file (never committed):
+
+```bash
+# PROD
+docker run -d --name wondermaid --restart unless-stopped \
+  --env-file .env.production -p 127.0.0.1:3000:3000 ghcr.io/joaodforce/wondermaid:latest
+
+# PRE
+docker run -d --name wondermaid-staging --restart unless-stopped \
+  --env-file .env.staging -p 127.0.0.1:3001:3000 ghcr.io/joaodforce/wondermaid:staging
+
+# Pull new :latest / :staging images automatically
+docker run -d --name watchtower --restart unless-stopped \
+  -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower wondermaid wondermaid-staging
+```
+
+Put a reverse proxy (Caddy, nginx) or a Cloudflare Tunnel in front, e.g. with Caddy:
+
+```
+wondermaid.app {
+    reverse_proxy 127.0.0.1:3000
+}
+
+staging.wondermaid.app {
+    reverse_proxy 127.0.0.1:3001
+}
+```
+
+The `tools` image target has the full source for one-off jobs:
+
+```bash
+docker build --target tools -t wondermaid-tools .
+docker run --rm --env-file .env.production wondermaid-tools npm run leaderboard:recalculate
+```

@@ -55,8 +55,8 @@ export function LeaderboardTable({
   const entries = board?.data.entries ?? [];
 
   return (
-    <section className="w-full">
-      <div role="tablist" aria-label="Team scenarios" className="flex gap-1 overflow-x-auto border-b border-slate-800">
+    <section className="w-full overflow-hidden rounded-2xl border border-black/30 bg-ink shadow-2xl shadow-black/30">
+      <div role="tablist" aria-label="Team scenarios" className="flex gap-1 overflow-x-auto border-b border-white/10 px-2">
         {scenarios.map((scenario) => (
           <button
             key={scenario.id}
@@ -67,8 +67,8 @@ export function LeaderboardTable({
             className={cn(
               '-mb-px shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
               scenario.id === selected.id
-                ? 'border-amber-500 text-amber-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200',
+                ? 'border-amber-400 text-amber-300'
+                : 'border-transparent text-stone-400 hover:text-stone-200',
             )}
           >
             {scenario.name}
@@ -76,11 +76,11 @@ export function LeaderboardTable({
         ))}
       </div>
 
-      <p className="mt-3 mb-4 text-sm text-slate-400">
-        {selected.description} · <span className="text-slate-500">{ATTACK_LABELS[selected.attackType]} damage</span>
+      <p className="border-b border-white/10 px-4 py-3 text-sm text-stone-400 sm:px-5">
+        {selected.description} · <span className="text-stone-500">{ATTACK_LABELS[selected.attackType]} damage</span>
       </p>
 
-      <div className="relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-lg">
+      <div className="relative">
         {failed ? (
           <EmptyState>
             {error.message}{' '}
@@ -96,8 +96,8 @@ export function LeaderboardTable({
           <EmptyState>No builds on this leaderboard yet. Be the first!</EmptyState>
         ) : (
           <div className={cn('overflow-x-auto transition-opacity', isStale && 'opacity-60')} aria-busy={isStale}>
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="border-b border-slate-800 bg-slate-950/60 text-xs text-slate-400 uppercase">
+            <table className="w-full text-left text-sm text-stone-300">
+              <thead className="border-b border-white/10 bg-black/30 text-xs text-stone-400 uppercase">
                 <tr>
                   <th className="px-3 py-3 sm:px-4">Rank</th>
                   <th className="px-3 py-3 sm:px-4">Player</th>
@@ -109,33 +109,33 @@ export function LeaderboardTable({
                   <th className="px-3 py-3 sm:px-4 text-right">Damage</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-white/5">
                 {entries.map((entry) => (
                   <tr
                     key={entry.uid}
                     className={cn(
-                      'transition-colors hover:bg-slate-800/40',
-                      entry.uid === highlightUid && 'bg-amber-500/10 hover:bg-amber-500/15',
+                      'transition-colors hover:bg-white/5',
+                      entry.uid === highlightUid && 'bg-rose-500/15 hover:bg-rose-500/20',
                     )}
                   >
-                    <td className="px-3 py-3 sm:px-4 font-semibold whitespace-nowrap text-slate-100">
+                    <td className="px-3 py-3 sm:px-4 font-semibold whitespace-nowrap text-stone-100">
                       {MEDALS[entry.rank - 1] && <span aria-hidden>{MEDALS[entry.rank - 1]} </span>}
                       {entry.rank}
                     </td>
-                    <td className="px-3 py-3 sm:px-4 font-medium whitespace-nowrap text-slate-100">
+                    <td className="px-3 py-3 sm:px-4 font-medium whitespace-nowrap text-stone-100">
                       {entry.nickname}
-                      <span className="ml-2 rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-400">
+                      <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-xs text-stone-400">
                         C{entry.constellation}
                       </span>
-                      <span className="block text-xs font-normal whitespace-normal text-slate-500 sm:hidden">
+                      <span className="block text-xs font-normal whitespace-normal text-stone-500 sm:hidden">
                         {weaponName(entry.weaponId)} R{entry.weaponRefinement} · {entry.uid}
                       </span>
                     </td>
-                    <td className="hidden px-3 py-3 sm:px-4 font-mono text-slate-400 sm:table-cell">{entry.uid}</td>
+                    <td className="hidden px-3 py-3 sm:px-4 font-mono text-stone-400 sm:table-cell">{entry.uid}</td>
                     <td className="hidden px-3 py-3 sm:px-4 whitespace-nowrap sm:table-cell">
-                      {weaponName(entry.weaponId)} <span className="text-slate-500">R{entry.weaponRefinement}</span>
+                      {weaponName(entry.weaponId)} <span className="text-stone-500">R{entry.weaponRefinement}</span>
                     </td>
-                    <td className="hidden max-w-64 truncate px-3 py-3 sm:px-4 text-slate-400 lg:table-cell">
+                    <td className="hidden max-w-64 truncate px-3 py-3 sm:px-4 text-stone-400 lg:table-cell">
                       {formatArtifactSets(entry.artifactSets)}
                     </td>
                     <td className="hidden px-3 py-3 sm:px-4 text-right font-mono md:table-cell">
@@ -161,5 +161,5 @@ export function LeaderboardTable({
 }
 
 function EmptyState({ children }: { children: ReactNode }) {
-  return <div className="p-8 text-center text-sm text-slate-400">{children}</div>;
+  return <div className="p-8 text-center text-sm text-stone-400">{children}</div>;
 }
