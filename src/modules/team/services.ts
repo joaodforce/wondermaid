@@ -1,13 +1,13 @@
-import { asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { enkaProfiles, players, teamShowcases } from '@/db/schema';
-import { calculateNoelleDamage, explainNoelleDamage, type DamageExplanation } from '@/modules/calculator/noelle';
-import type { DamageBreakdown } from '@/modules/calculator/types';
 import { ownsUid } from '@/modules/accounts/services';
 import { fetchPlayerData } from '@/modules/enka/client';
 import { parsePlayerProfile } from '@/modules/enka/mapper';
+import { calculateTeam } from '@/modules/go/team';
+import type { TeamCalculation } from '@/modules/go/types';
 import { CHARACTER_NAMES, NOELLE_INFO, supportInfo } from './characters';
-import { selectParty, teamScenario, type CharacterBuild, type TeamValidationError, type TeammateEffect } from './party';
+import { selectParty, type CharacterBuild, type TeamValidationError } from './party';
 
 export class TeamError extends Error {
   constructor(message: string) {
@@ -16,7 +16,7 @@ export class TeamError extends Error {
   }
 }
 
-const VALIDATION_MESSAGES: Record<TeamValidationError, string> = {
+const VALIDATION_MESSAGES: Record<Exclude<TeamValidationError, 'UNSUPPORTED'>, string> = {
   WRONG_SIZE: 'Pick exactly three teammates.',
   DUPLICATE: 'Pick three different teammates.',
   NOT_ALLOWED: "One of those characters isn't allowed in Team Showcase.",
@@ -62,28 +62,27 @@ export async function getShowcaseCharacters(
   };
 }
 
-function evaluate(noelle: Parameters<typeof calculateNoelleDamage>[0], party: CharacterBuild[]) {
-  const [noelleBuild, ...teammates] = party;
-  const { scenario, effects } = teamScenario(noelleBuild, teammates);
-  return { scenario, effects, breakdown: calculateNoelleDamage(noelle, scenario) };
-}
-
 /** Builds the team from the owner's current showcase and ranks it. Throws `TeamError` or `EnkaError`. */
 export async function submitTeam(userId: string, uid: string, teammateIds: number[]): Promise<{ rank: number; finalDamage: number }> {
   if (!(await ownsUid(userId, uid))) throw new TeamError('Verify this UID on your account page first.');
   const data = await fetchPlayerData(uid);
   const selection = selectParty(data.avatarInfoList ?? [], teammateIds);
-  if ('error' in selection) throw new TeamError(VALIDATION_MESSAGES[selection.error]);
+  if ('error' in selection) {
+    throw new TeamError(
+      selection.error === 'UNSUPPORTED'
+        ? `${selection.name}'s character or weapon isn't supported by the calculator yet. Try again after the next update.`
+        : VALIDATION_MESSAGES[selection.error],
+    );
+  }
 
-  const party = [selection.noelleBuild, ...selection.teammates];
-  const { breakdown } = evaluate(selection.noelle, party);
+  const calculation = calculateTeam(selection.good);
   const profile = parsePlayerProfile(data, uid);
   const now = new Date();
   const row = {
-    noelleJson: selection.noelle,
-    partyJson: party,
-    finalDamage: breakdown.finalDamage,
-    breakdownJson: breakdown,
+    partyJson: selection.builds,
+    goodJson: selection.good,
+    finalDamage: calculation.finalDamage,
+    calculationJson: calculation,
     submittedBy: userId,
     submittedAt: now,
   };
@@ -100,8 +99,8 @@ export async function submitTeam(userId: string, uid: string, teammateIds: numbe
   const [{ rank }] = await db
     .select({ rank: sql<number>`count(*) + 1`.mapWith(Number) })
     .from(teamShowcases)
-    .where(sql`${teamShowcases.finalDamage} > ${breakdown.finalDamage}`);
-  return { rank, finalDamage: breakdown.finalDamage };
+    .where(and(isNotNull(teamShowcases.calculationJson), sql`${teamShowcases.finalDamage} > ${calculation.finalDamage}`));
+  return { rank, finalDamage: calculation.finalDamage };
 }
 
 export interface TeamShowcaseEntry {
@@ -109,81 +108,86 @@ export interface TeamShowcaseEntry {
   uid: string;
   nickname: string;
   party: CharacterBuild[];
-  effects: TeammateEffect[];
-  attackType: string;
-  breakdown: DamageBreakdown;
+  calculation: TeamCalculation;
   finalDamage: number;
   submittedAt: string;
 }
 
+const entryColumns = {
+  uid: teamShowcases.uid,
+  nickname: players.nickname,
+  party: teamShowcases.partyJson,
+  calculation: teamShowcases.calculationJson,
+  finalDamage: teamShowcases.finalDamage,
+  submittedAt: teamShowcases.submittedAt,
+};
+
 export async function getTeamLeaderboard(limit = 100): Promise<TeamShowcaseEntry[]> {
   const rows = await db
-    .select({
-      uid: teamShowcases.uid,
-      nickname: players.nickname,
-      party: teamShowcases.partyJson,
-      breakdown: teamShowcases.breakdownJson,
-      finalDamage: teamShowcases.finalDamage,
-      submittedAt: teamShowcases.submittedAt,
-    })
+    .select(entryColumns)
     .from(teamShowcases)
     .innerJoin(players, eq(players.uid, teamShowcases.uid))
+    .where(isNotNull(teamShowcases.calculationJson))
     .orderBy(desc(teamShowcases.finalDamage), asc(teamShowcases.submittedAt))
     .limit(limit);
 
-  return rows.map((row, index) => {
-    const [noelle, ...teammates] = row.party;
-    const { scenario, effects } = teamScenario(noelle, teammates);
-    return {
-      ...row,
-      rank: index + 1,
-      effects,
-      attackType: scenario.attackType,
-      submittedAt: row.submittedAt.toISOString(),
-    };
-  });
+  return rows.map((row, index) => ({
+    ...row,
+    calculation: row.calculation!,
+    rank: index + 1,
+    submittedAt: row.submittedAt.toISOString(),
+  }));
 }
 
-/** A Team Showcase entry worked out step by step, for its breakdown page. */
-export async function getTeamExplanation(
-  uid: string,
-): Promise<{ uid: string; nickname: string; party: CharacterBuild[]; effects: TeammateEffect[]; explanation: DamageExplanation; submittedAt: string } | null> {
+/** One Team Showcase entry with its full calculation, for its breakdown page. */
+export async function getTeamShowcase(uid: string): Promise<TeamShowcaseEntry | null> {
   const [row] = await db
-    .select({
-      nickname: players.nickname,
-      noelle: teamShowcases.noelleJson,
-      party: teamShowcases.partyJson,
-      submittedAt: teamShowcases.submittedAt,
-    })
+    .select(entryColumns)
     .from(teamShowcases)
     .innerJoin(players, eq(players.uid, teamShowcases.uid))
-    .where(eq(teamShowcases.uid, uid))
+    .where(and(eq(teamShowcases.uid, uid), isNotNull(teamShowcases.calculationJson)))
     .limit(1);
   if (!row) return null;
 
-  const [noelle, ...teammates] = row.party;
-  const { scenario, effects } = teamScenario(noelle, teammates);
-  return {
-    uid,
-    nickname: row.nickname,
-    party: row.party,
-    effects,
-    explanation: explainNoelleDamage(row.noelle, scenario),
-    submittedAt: row.submittedAt.toISOString(),
-  };
+  const [{ rank }] = await db
+    .select({ rank: sql<number>`count(*) + 1`.mapWith(Number) })
+    .from(teamShowcases)
+    .where(and(isNotNull(teamShowcases.calculationJson), sql`${teamShowcases.finalDamage} > ${row.finalDamage}`));
+  return { ...row, calculation: row.calculation!, rank, submittedAt: row.submittedAt.toISOString() };
 }
 
-/** Recomputes every entry from its stored builds, e.g. after a calculator change. */
-export async function recalculateTeamShowcases(): Promise<number> {
+/**
+ * Recomputes every entry from its stored builds, e.g. after a calculator change. Entries from before
+ * the Genshin Optimizer engine get their builds rebuilt from the Enka profile stored when they were submitted.
+ */
+export async function recalculateTeamShowcases(): Promise<{ updated: number; skipped: number }> {
   const rows = await db
-    .select({ uid: teamShowcases.uid, noelle: teamShowcases.noelleJson, party: teamShowcases.partyJson })
-    .from(teamShowcases);
+    .select({
+      uid: teamShowcases.uid,
+      party: teamShowcases.partyJson,
+      good: teamShowcases.goodJson,
+      profile: enkaProfiles.responseJson,
+    })
+    .from(teamShowcases)
+    .leftJoin(enkaProfiles, eq(enkaProfiles.uid, teamShowcases.uid));
+
+  let updated = 0;
   for (const row of rows) {
-    const { breakdown } = evaluate(row.noelle, row.party);
+    let good = row.good;
+    if (!good) {
+      const selection = selectParty(row.profile?.avatarInfoList ?? [], row.party.slice(1).map((member) => member.id));
+      if ('error' in selection) {
+        console.warn(`[team] can't rebuild Team Showcase ${row.uid} (${selection.error}); it stays hidden until resubmitted`);
+        continue;
+      }
+      good = selection.good;
+    }
+    const calculation = calculateTeam(good);
     await db
       .update(teamShowcases)
-      .set({ finalDamage: breakdown.finalDamage, breakdownJson: breakdown })
+      .set({ goodJson: good, finalDamage: calculation.finalDamage, calculationJson: calculation })
       .where(eq(teamShowcases.uid, row.uid));
+    updated++;
   }
-  return rows.length;
+  return { updated, skipped: rows.length - updated };
 }

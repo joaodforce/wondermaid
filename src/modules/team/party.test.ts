@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { explainNoelleDamage } from '@/modules/calculator/noelle';
 import type { EnkaAvatar } from '@/modules/enka/types';
-import { selectParty, teamScenario } from './party';
+import { selectParty } from './party';
 
 const weapon = (itemId: number, refinement = 1) => ({
   itemId,
@@ -34,7 +33,7 @@ const yunJin = avatar(10000064, 6, { '10641': 1, '10642': 9, '10643': 10 }, { eq
 const mavuika = avatar(10000106, 0, {});
 const showcase = [noelle, gorou, furina, zhongli, yunJin, mavuika];
 
-describe('selectParty', () => {
+describe('selectParty validation', () => {
   it('rejects invalid selections', () => {
     assert.deepEqual(selectParty(showcase, [10000055, 10000089]), { error: 'WRONG_SIZE' });
     assert.deepEqual(selectParty(showcase, [10000055, 10000055, 10000089]), { error: 'DUPLICATE' });
@@ -44,53 +43,22 @@ describe('selectParty', () => {
   });
 });
 
-describe('teamScenario', () => {
-  const party = selectParty(showcase, [10000055, 10000030, 10000064]);
-  if ('error' in party) throw new Error(party.error);
-  const { scenario, effects } = teamScenario(party.noelleBuild, party.teammates);
-
-  it("derives buffs from the teammates' real builds", () => {
-    assert.equal(scenario.attackType, 'Na4');
-    assert.deepEqual(scenario.noelle, { constellation: 6, burstLevel: 13 });
-    assert.equal(scenario.team.geoResonance, true);
-    // Noelle, Gorou, Zhongli and Yun Jin are all Geo; Gorou counts at most 3
-    assert.deepEqual(scenario.team.gorou, { constellation: 6, skillLevel: 10, geoCount: 4 });
-    assert.equal(scenario.team.zhongli, true);
+describe('selectParty', () => {
+  it('returns the builds and their Genshin Optimizer form, Noelle first', () => {
+    const party = selectParty(showcase, [10000055, 10000030, 10000064]);
+    if ('error' in party) throw new Error(party.error);
+    assert.deepEqual(party.builds.map((b) => b.name), ['Noelle', 'Gorou', 'Zhongli', 'Yun Jin']);
+    assert.deepEqual(party.good.map((m) => m.char.key), ['Noelle', 'Gorou', 'Zhongli', 'YunJin']);
+    // GO takes base talent levels and adds Noelle's C3/C5 boosts itself
+    assert.deepEqual(party.good[0].char.talent, { auto: 10, skill: 9, burst: 10 });
+    assert.deepEqual(party.builds[0].talents, [10, 12, 13]);
   });
 
-  it('counts party set buffs once each', () => {
-    assert.deepEqual(
-      scenario.team.extraBuffs?.map((b) => b.source),
-      ["Gorou's Noblesse Oblige (4)", "Zhongli's Tenacity of the Millelith (4)"],
-    );
-  });
-
-  it('flags teammates whose kit is not modeled', () => {
-    assert.deepEqual(
-      effects.map((e) => [e.name, e.modeled]),
-      [
-        ['Gorou', true],
-        ['Zhongli', true],
-        ['Yun Jin', false],
-      ],
-    );
-  });
-
-  it("uses Noelle's real burst level and her own weapon", () => {
-    const e = explainNoelleDamage(party.noelle, scenario);
-    assert.ok(Math.abs(e.burstDefToAtk - (0.4 * 2.125 + 0.5)) < 1e-9);
-    assert.equal(e.weaponSwapped, false);
-    assert.ok(e.entries.some((entry) => entry.source === 'Gorou C6' && entry.stat === 'critDmg' && entry.value === 0.4));
-  });
-
-  it('switches to plunges with Xianyun and reads her ATK and Crane', () => {
-    const xianyun = avatar(10000093, 0, { '10931': 1, '10932': 9, '10935': 9 }, { equipList: [...relics(15003), weapon(14515, 2)] });
-    const withXianyun = selectParty([...showcase, xianyun], [10000093, 10000089, 10000030]);
-    if ('error' in withXianyun) throw new Error(withXianyun.error);
-    const { scenario: plunge } = teamScenario(withXianyun.noelleBuild, withXianyun.teammates);
-    assert.equal(plunge.attackType, 'Plunge');
-    assert.deepEqual(plunge.team.xianyun, { constellation: 0, atk: 2000, craneRefinement: 2 });
-    assert.deepEqual(plunge.team.furina, { constellation: 2, burstLevel: 10 });
-    assert.equal(plunge.team.geoResonance, true);
+  it('names a member Genshin Optimizer cannot calculate', () => {
+    const unknownWeapon = avatar(10000055, 6, {}, { equipList: [weapon(99999)] });
+    assert.deepEqual(selectParty([noelle, unknownWeapon, zhongli, yunJin], [10000055, 10000030, 10000064]), {
+      error: 'UNSUPPORTED',
+      name: 'Gorou',
+    });
   });
 });

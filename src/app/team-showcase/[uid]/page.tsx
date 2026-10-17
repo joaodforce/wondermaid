@@ -2,15 +2,16 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cache, Suspense } from 'react';
-import { BuffsPanel, CharacterSheetPanel, FormulaPanel, LEGEND, Value } from '@/components/calc/damage-explanation';
 import { LocalTime } from '@/components/local-time';
 import { MemberCard } from '@/components/team/member-card';
+import { AssumptionsPanel, TeammateImpactPanel, TeamStatsPanel } from '@/components/team/team-calculation';
 import { VersionBadge } from '@/components/version-badge';
 import { formatNumber } from '@/lib/format';
 import { uidSchema } from '@/modules/leaderboard/validation';
-import { getTeamExplanation } from '@/modules/team/services';
+import { addedDamage } from '@/modules/go/types';
+import { getTeamShowcase } from '@/modules/team/services';
 
-const loadTeam = cache(async (uid: string) => (uidSchema.safeParse(uid).success ? getTeamExplanation(uid) : null));
+const loadTeam = cache(async (uid: string) => (uidSchema.safeParse(uid).success ? getTeamShowcase(uid) : null));
 
 export async function generateMetadata({ params }: PageProps<'/team-showcase/[uid]'>): Promise<Metadata> {
   const team = await loadTeam((await params).uid);
@@ -37,7 +38,7 @@ export default function TeamBreakdownPage({ params }: PageProps<'/team-showcase/
 async function Breakdown({ uid }: { uid: string }) {
   const team = await loadTeam(uid);
   if (!team) notFound();
-  const { explanation } = team;
+  const { calculation } = team;
 
   return (
     <>
@@ -49,30 +50,30 @@ async function Breakdown({ uid }: { uid: string }) {
           <p className="text-sm font-semibold tracking-[0.2em] text-rose-950/80 uppercase">Team breakdown</p>
           <h1 className="mt-1 text-4xl font-black tracking-tight text-ink sm:text-5xl">{team.nickname}&apos;s team</h1>
           <p className="mt-1 text-sm text-ink/75">
-            UID <span className="font-mono">{uid}</span> · submitted <LocalTime iso={team.submittedAt} />
+            Rank #{team.rank} · UID <span className="font-mono">{uid}</span> · submitted <LocalTime iso={team.submittedAt} />
           </p>
         </div>
-        <p className="font-mono text-4xl font-black text-ink">{formatNumber(explanation.finalDamage)}</p>
+        <p className="font-mono text-4xl font-black text-ink">{formatNumber(calculation.finalDamage)}</p>
       </header>
 
       <section className="flex flex-col gap-4 rounded-2xl border border-black/30 bg-ink p-5 shadow-2xl shadow-black/30">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {team.party.map((member, index) => (
-            <MemberCard key={member.id} build={member} modeled={index === 0 ? undefined : team.effects[index - 1]?.modeled} />
+            <MemberCard key={member.id} build={member} addedDamage={index === 0 ? undefined : addedDamage(calculation, index)} />
           ))}
         </div>
-        <ul className="flex flex-wrap gap-2 text-xs" aria-label="Colour legend">
-          {LEGEND.map((item) => (
-            <li key={item.tone}>
-              <Value tone={item.tone}>{item.label}</Value>
-            </li>
-          ))}
-        </ul>
       </section>
 
-      <CharacterSheetPanel explanation={explanation} />
-      <BuffsPanel explanation={explanation} />
-      <FormulaPanel explanation={explanation} />
+      <TeamStatsPanel calculation={calculation} />
+      <TeammateImpactPanel party={team.party} calculation={calculation} />
+      <AssumptionsPanel party={team.party} calculation={calculation} />
+      <p className="text-xs leading-relaxed text-ink/70">
+        Calculated with the formula engine of{' '}
+        <a href="https://github.com/frzyc/genshin-optimizer" className="underline hover:text-ink" target="_blank" rel="noreferrer">
+          Genshin Optimizer
+        </a>{' '}
+        (MIT licence) from each member&apos;s showcase on Enka.Network.
+      </p>
     </>
   );
 }

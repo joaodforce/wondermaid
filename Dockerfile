@@ -31,6 +31,7 @@ COPY package.json tsconfig.json drizzle.config.ts ./
 COPY drizzle ./drizzle
 COPY scripts ./scripts
 COPY src ./src
+COPY vendor ./vendor
 CMD ["npm", "run", "db:migrate"]
 
 # Minimal production image (default target); applies pending migrations and recalculates ranks on boot

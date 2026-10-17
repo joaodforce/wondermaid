@@ -19,7 +19,16 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@genshin-optimizer/pando/engine": ["./vendor/genshin-optimizer/libs/pando/engine/src/index.ts"],
+      "@genshin-optimizer/game-opt/engine": ["./vendor/genshin-optimizer/libs/game-opt/engine/src/index.ts"],
+      "@genshin-optimizer/game-opt/formula": ["./vendor/genshin-optimizer/libs/game-opt/formula/src/index.ts"],
+      "@genshin-optimizer/common/util": ["./vendor/genshin-optimizer/libs/common/util/src/index.ts"],
+      "@genshin-optimizer/gi/consts": ["./vendor/genshin-optimizer/libs/gi/consts/src/index.ts"],
+      "@genshin-optimizer/gi/stats": ["./vendor/genshin-optimizer/libs/gi/stats/src/index.ts"],
+      "@genshin-optimizer/gi/formula": ["./vendor/genshin-optimizer/libs/gi/formula/src/index.ts"],
+      "@genshin-optimizer/gi/dm": ["./vendor/genshin-optimizer/libs/gi/dm/src/index.ts"],
+      "@genshin-optimizer/gi/good": ["./vendor/genshin-optimizer/libs/gi/good/src/index.ts"]
     }
   },
   "include": [

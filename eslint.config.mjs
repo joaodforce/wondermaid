@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // esbuild bundles of the maintenance scripts
     "dist/**",
+    // Third-party code copied as-is (see vendor/genshin-optimizer/README.md)
+    "vendor/**",
   ]),
 ]);
 

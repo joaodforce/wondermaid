@@ -1,4 +1,4 @@
-import { CircleAlert } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { EnkaIcon } from '@/components/build/enka-icon';
 import { formatArtifactSets, formatNumber, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -43,7 +43,8 @@ export function Portrait({ icon, name, rarity, constellation, size = 'md' }: {
 }
 
 /** One party member's build: portrait, talents, weapon, sets and key stats */
-export function MemberCard({ build, modeled }: { build: CharacterBuild; modeled?: boolean }) {
+/** `addedDamage` is how much more Noelle deals with this teammate than without them, as a fraction */
+export function MemberCard({ build, addedDamage }: { build: CharacterBuild; addedDamage?: number }) {
   const stats = [
     ['ATK', formatNumber(build.stats.atk)],
     ['DEF', formatNumber(build.stats.def)],
@@ -61,10 +62,11 @@ export function MemberCard({ build, modeled }: { build: CharacterBuild; modeled?
           <p className="text-xs text-stone-400">
             Lv. {build.level} · C{build.constellation} · Talents {build.talents.join('/')}
           </p>
-          {modeled === false && (
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-amber-300" title="Their artifact set, weapon and element still count">
-              <CircleAlert className="h-3 w-3" aria-hidden />
-              Kit buffs not modeled yet
+          {addedDamage !== undefined && (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-emerald-300" title="Noelle's damage with them versus without them">
+              <TrendingUp className="h-3 w-3" aria-hidden />
+              {addedDamage >= 0 ? '+' : ''}
+              {formatPercent(addedDamage)} damage
             </p>
           )}
         </div>
