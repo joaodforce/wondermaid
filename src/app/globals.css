@@ -1,14 +1,17 @@
 @import "tailwindcss";
 
+/* Palette taken from the Noelle illustration: its flat olive backdrop, the black skirt and the gold trim */
 :root {
-  --background: #020617;
-  --foreground: #f1f5f9;
+  --background: #8a825e;
+  --foreground: #16140f;
   color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-olive: #8a825e;
+  --color-ink: #17150f;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -17,4 +20,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* The illustration is cropped at its bottom edge (shadow and foot), so fade it into the page */
+.art-fade {
+  mask-image: linear-gradient(to bottom, black 74%, transparent 97%);
 }

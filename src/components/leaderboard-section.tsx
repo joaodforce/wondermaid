@@ -13,10 +13,6 @@ export async function LeaderboardSection() {
 
 export function LeaderboardSkeleton() {
   return (
-    <div className="w-full animate-pulse" aria-hidden>
-      <div className="h-11 border-b border-slate-800" />
-      <div className="mt-3 mb-4 h-5 w-64 rounded bg-slate-800/60" />
-      <div className="h-80 rounded-xl border border-slate-800 bg-slate-900" />
-    </div>
+    <div className="h-96 w-full animate-pulse rounded-2xl border border-black/30 bg-ink/80" aria-hidden />
   );
 }

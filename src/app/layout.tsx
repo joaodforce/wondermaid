@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://wondermaid.app'),
   title: 'Noelle Mains Leaderboard',
   description: 'Genshin Impact Noelle builds ranked by damage in Mono Geo, Furina, Xianyun plunge and Lunar teams.',
 };
