@@ -1,5 +1,13 @@
-import { NOELLE_CHARACTER_ID } from '@/modules/calculator/data';
-import type { NoelleBuild, NoelleStats, WeaponInfo } from '@/modules/calculator/types';
+import { NOELLE_CHARACTER_ID, NOELLE_TALENTS } from '@/modules/calculator/data';
+import type {
+  ArtifactPiece,
+  ArtifactSlot,
+  NoelleBuild,
+  NoelleStats,
+  StatLine,
+  Talents,
+  WeaponInfo,
+} from '@/modules/calculator/types';
 import { EnkaError, type EnkaAvatar, type EnkaResponse } from './types';
 
 // fightPropMap IDs (https://github.com/EnkaNetwork/API-docs/blob/master/docs/gi/api.md#fightprop)
@@ -19,6 +27,15 @@ export const FIGHT_PROPS = {
 } as const satisfies Record<keyof NoelleStats, number>;
 
 const LEVEL_PROP = '4001';
+
+const EQUIP_SLOTS: Record<string, ArtifactSlot> = {
+  EQUIP_BRACER: 'flower',
+  EQUIP_NECKLACE: 'plume',
+  EQUIP_SHOES: 'sands',
+  EQUIP_RING: 'goblet',
+  EQUIP_DRESS: 'circlet',
+};
+const SLOT_ORDER = Object.values(EQUIP_SLOTS);
 // Artifact icons are named after their set, e.g. UI_RelicIcon_15021_4
 const RELIC_ICON_PATTERN = /^UI_RelicIcon_(\d+)_\d+$/;
 
@@ -76,6 +93,8 @@ export function parseWeapon(avatar: EnkaAvatar): WeaponInfo {
     refinement: affix + 1,
     baseAtk: baseAtk?.statValue ?? 0,
     subStat: subStat?.appendPropId ? { type: subStat.appendPropId, value: subStat.statValue } : null,
+    icon: equip.flat.icon,
+    rarity: equip.flat.rankLevel,
   };
 }
 
@@ -88,6 +107,42 @@ export function parseArtifactSets(avatar: EnkaAvatar): Record<number, number> {
     if (setId) sets[setId] = (sets[setId] ?? 0) + 1;
   }
   return sets;
+}
+
+const statLine = (stat: { mainPropId?: string; appendPropId?: string; statValue: number }): StatLine => ({
+  type: stat.mainPropId ?? stat.appendPropId ?? '',
+  value: stat.statValue,
+});
+
+export function parseArtifacts(avatar: EnkaAvatar): ArtifactPiece[] {
+  const pieces: ArtifactPiece[] = [];
+  for (const item of avatar.equipList ?? []) {
+    const slot = EQUIP_SLOTS[item.flat?.equipType ?? ''];
+    if (item.flat?.itemType !== 'ITEM_RELIQUARY' || !slot || !item.flat.reliquaryMainstat) continue;
+    pieces.push({
+      slot,
+      setId: Number(RELIC_ICON_PATTERN.exec(item.flat.icon)?.[1]) || 0,
+      // Enka reports levels as 1-21
+      level: Math.max((item.reliquary?.level ?? 1) - 1, 0),
+      rarity: item.flat.rankLevel ?? 5,
+      icon: item.flat.icon,
+      mainStat: statLine(item.flat.reliquaryMainstat),
+      subStats: (item.flat.reliquarySubstats ?? []).map(statLine),
+    });
+  }
+  return pieces.sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot));
+}
+
+export function parseTalents(avatar: EnkaAvatar): Talents {
+  const level = ({ skillId, proudGroupId }: { skillId: number; proudGroupId: number }) => {
+    const bonus = avatar.proudSkillExtraLevelMap?.[proudGroupId] ?? 0;
+    return { level: (avatar.skillLevelMap?.[skillId] ?? 1) + bonus, bonus };
+  };
+  return {
+    normal: level(NOELLE_TALENTS.normal),
+    skill: level(NOELLE_TALENTS.skill),
+    burst: level(NOELLE_TALENTS.burst),
+  };
 }
 
 export function fourPieceSetId(sets: Record<number, number>): number | null {
@@ -104,5 +159,7 @@ export function parseNoelleBuild(avatar: EnkaAvatar): NoelleBuild {
     weapon: parseWeapon(avatar),
     artifactSets,
     fourPieceSetId: fourPieceSetId(artifactSets),
+    artifacts: parseArtifacts(avatar),
+    talents: parseTalents(avatar),
   };
 }

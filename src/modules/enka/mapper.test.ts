@@ -3,15 +3,30 @@ import { describe, it } from 'node:test';
 import { EnkaError, type EnkaAvatar, type EnkaEquip, type EnkaResponse } from './types';
 import { findNoelle, parseNoelleBuild, parsePlayerProfile } from './mapper';
 
+// Relic icon suffixes: _1 goblet, _2 plume, _3 circlet, _4 flower, _5 sands
+const EQUIP_TYPES = ['', 'EQUIP_RING', 'EQUIP_NECKLACE', 'EQUIP_DRESS', 'EQUIP_BRACER', 'EQUIP_SHOES'];
+
 const relic = (setId: number, slot: number): EnkaEquip => ({
   itemId: 95400 + slot,
   reliquary: { level: 21, mainPropId: 10001 },
-  flat: { itemType: 'ITEM_RELIQUARY', icon: `UI_RelicIcon_${setId}_${slot}` },
+  flat: {
+    itemType: 'ITEM_RELIQUARY',
+    icon: `UI_RelicIcon_${setId}_${slot}`,
+    equipType: EQUIP_TYPES[slot],
+    rankLevel: 5,
+    reliquaryMainstat: { mainPropId: 'FIGHT_PROP_DEFENSE_PERCENT', statValue: 58.3 },
+    reliquarySubstats: [
+      { appendPropId: 'FIGHT_PROP_CRITICAL', statValue: 7.0 },
+      { appendPropId: 'FIGHT_PROP_CRITICAL_HURT', statValue: 14.8 },
+    ],
+  },
 });
 
 const noelle: EnkaAvatar = {
   avatarId: 10000034,
   talentIdList: [3401, 3402, 3403, 3404, 3405, 3406],
+  skillLevelMap: { '10341': 10, '10342': 9, '10343': 10 },
+  proudSkillExtraLevelMap: { '3432': 3, '3439': 3 },
   propMap: { '4001': { type: 4001, val: '90' } },
   fightPropMap: {
     '4': 733.2,
@@ -72,12 +87,37 @@ describe('parseNoelleBuild', () => {
       refinement: 2,
       baseAtk: 542,
       subStat: { type: 'FIGHT_PROP_CRITICAL_HURT', value: 88.2 },
+      icon: 'UI_EquipIcon_Claymore_Itadorimaru',
+      rarity: undefined,
     });
   });
 
   it('counts artifact sets from their icons and finds the 4-piece set', () => {
     assert.deepEqual(build.artifactSets, { 15021: 4, 15014: 1 });
     assert.equal(build.fourPieceSetId, 15021);
+  });
+
+  it('reads every artifact in slot order', () => {
+    assert.deepEqual(
+      build.artifacts?.map((piece) => [piece.slot, piece.setId, piece.level]),
+      [
+        ['flower', 15021, 20],
+        ['plume', 15021, 20],
+        ['sands', 15021, 20],
+        ['goblet', 15021, 20],
+        ['circlet', 15014, 20],
+      ],
+    );
+    assert.deepEqual(build.artifacts?.[0].mainStat, { type: 'FIGHT_PROP_DEFENSE_PERCENT', value: 58.3 });
+    assert.deepEqual(build.artifacts?.[0].subStats[1], { type: 'FIGHT_PROP_CRITICAL_HURT', value: 14.8 });
+  });
+
+  it('adds constellation talent levels', () => {
+    assert.deepEqual(build.talents, {
+      normal: { level: 10, bonus: 0 },
+      skill: { level: 12, bonus: 3 },
+      burst: { level: 13, bonus: 3 },
+    });
   });
 
   it('reads level and constellation', () => {

@@ -6,7 +6,7 @@ import type { NoelleBuild } from '@/modules/calculator/types';
 import { fetchPlayerData } from '@/modules/enka/client';
 import { findNoelle, parseNoelleBuild, parsePlayerProfile } from '@/modules/enka/mapper';
 import { listActiveScenarios, toScenario, toScenarioSummary } from './scenarios';
-import type { LeaderboardEntry, LeaderboardResponse, ScenarioResult } from './types';
+import type { LeaderboardEntry, LeaderboardResponse, PlayerBuildPage, ScenarioResult } from './types';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -200,4 +200,57 @@ export async function recalculateAllRanks(): Promise<{ updated: number; skipped:
     updated++;
   }
   return { updated, skipped };
+}
+
+/** Everything the player page shows: the latest Noelle build and its result on each active scenario. */
+export async function getPlayerBuild(uid: string): Promise<PlayerBuildPage | null> {
+  const [row] = await db
+    .select({ player: players, build: noelleBuilds.statsJson, calculatedAt: noelleBuilds.calculatedAt })
+    .from(players)
+    .innerJoin(noelleBuilds, eq(noelleBuilds.uid, players.uid))
+    .where(eq(players.uid, uid))
+    .orderBy(desc(noelleBuilds.calculatedAt))
+    .limit(1);
+  // Builds from before stats_json held a parsed build can't be shown
+  if (!row?.build?.stats) return null;
+
+  const activeScenarios = await listActiveScenarios();
+  const [ranks, results] = await Promise.all([
+    getPlayerRanks(
+      uid,
+      activeScenarios.map((scenario) => scenario.id),
+    ),
+    db
+      .select({
+        scenarioId: leaderboardRanks.scenarioId,
+        finalDamage: leaderboardRanks.finalDamage,
+        breakdown: leaderboardRanks.breakdownJson,
+      })
+      .from(leaderboardRanks)
+      .where(eq(leaderboardRanks.uid, uid)),
+  ]);
+
+  const scenarioResults = activeScenarios.flatMap((scenario) => {
+    const result = results.find((r) => r.scenarioId === scenario.id);
+    if (!result) return [];
+    const position = ranks.find((r) => r.scenarioId === scenario.id);
+    return [
+      {
+        ...toScenarioSummary(scenario),
+        finalDamage: result.finalDamage,
+        rank: position?.rank ?? 0,
+        total: position?.total ?? 0,
+        breakdown: result.breakdown,
+      },
+    ];
+  });
+
+  return {
+    uid,
+    nickname: row.player.nickname,
+    level: row.player.level,
+    build: row.build,
+    updatedAt: row.calculatedAt.toISOString(),
+    scenarios: scenarioResults,
+  };
 }

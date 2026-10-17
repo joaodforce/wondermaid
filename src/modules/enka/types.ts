@@ -21,6 +21,8 @@ export interface EnkaAvatar {
   propMap?: Record<string, { type: number; val?: string }>;
   fightPropMap?: Record<string, number>;
   skillLevelMap?: Record<string, number>;
+  /** Talent levels added by constellations, keyed by proud skill group ID */
+  proudSkillExtraLevelMap?: Record<string, number>;
   equipList?: EnkaEquip[];
 }
 
