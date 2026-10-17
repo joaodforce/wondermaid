@@ -2,21 +2,24 @@ import { asc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { scenarios } from '@/db/schema';
 import type { AttackType, Scenario } from '@/modules/calculator/types';
+import { fixedWeaponIcon, isFixedWeaponSupported } from '@/modules/calculator/weapons';
+import { teamMembers } from './team-members';
 import type { ScenarioSummary } from './types';
 
 type ScenarioRow = typeof scenarios.$inferSelect;
 type NewScenario = typeof scenarios.$inferInsert;
 
-export const DEFAULT_SCENARIO_ID = 'mono-geo-c6-gorou';
+export const DEFAULT_SCENARIO_ID = 'lunar-crystallize';
 
-// Seeded on first use; edit or deactivate them in the database (then recalculate ranks)
+// Seeded on first use, in order of relevance; edit or deactivate them in the database (then recalculate ranks).
+// Every scenario defaults to Redhorn Stonethresher R1 (scenarios.weapon_id / weapon_refinement).
 export const DEFAULT_SCENARIOS: NewScenario[] = [
   {
-    id: DEFAULT_SCENARIO_ID,
-    name: 'Mono Geo',
-    description: 'N4 with C6 Gorou and Geo Resonance',
+    id: 'lunar-crystallize',
+    name: 'Lunar Crystallize',
+    description: 'N4 with C0 Columbina and Linnea (Ascendant Gleam)',
     attackType: 'Na4',
-    teamConfigJson: { geoResonance: true, gorou: { constellation: 6 } },
+    teamConfigJson: { columbina: { constellation: 0 }, linnea: true, moonsign: 2 },
     sortOrder: 0,
   },
   {
@@ -36,11 +39,11 @@ export const DEFAULT_SCENARIOS: NewScenario[] = [
     sortOrder: 2,
   },
   {
-    id: 'lunar-crystallize',
-    name: 'Lunar Crystallize',
-    description: 'N4 with C0 Columbina and Linnea (Ascendant Gleam)',
+    id: 'mono-geo-c6-gorou',
+    name: 'Mono Geo',
+    description: 'N4 with C6 Gorou, Zhongli and Geo Resonance',
     attackType: 'Na4',
-    teamConfigJson: { columbina: { constellation: 0 }, linnea: true, moonsign: 2 },
+    teamConfigJson: { geoResonance: true, gorou: { constellation: 6 }, zhongli: true },
     sortOrder: 3,
   },
 ];
@@ -73,6 +76,8 @@ export async function listActiveScenarios(): Promise<ScenarioRow[]> {
 export const toScenario = (row: ScenarioRow): Scenario => ({
   attackType: row.attackType as AttackType,
   team: row.teamConfigJson,
+  // A weapon without level 90 data falls back to each player's own weapon
+  weapon: isFixedWeaponSupported(row.weaponId) ? { id: row.weaponId, refinement: row.weaponRefinement } : undefined,
 });
 
 export const toScenarioSummary = (row: ScenarioRow): ScenarioSummary => ({
@@ -80,4 +85,6 @@ export const toScenarioSummary = (row: ScenarioRow): ScenarioSummary => ({
   name: row.name,
   description: row.description,
   attackType: row.attackType as AttackType,
+  weapon: { id: row.weaponId, refinement: row.weaponRefinement, icon: fixedWeaponIcon(row.weaponId) ?? null },
+  members: teamMembers(row.teamConfigJson),
 });

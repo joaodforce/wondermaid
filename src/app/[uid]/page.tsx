@@ -6,6 +6,7 @@ import { cache, Suspense } from 'react';
 import { ArtifactCard } from '@/components/build/artifact-card';
 import { CharacterCard } from '@/components/build/character-card';
 import { RefreshBuildButton } from '@/components/build/refresh-build-button';
+import { ShareActions } from '@/components/build/share-actions';
 import { ScenarioResults } from '@/components/build/scenario-results';
 import { VersionBadge } from '@/components/version-badge';
 import { formatDateTime } from '@/lib/format';
@@ -20,9 +21,12 @@ export async function generateMetadata({ params }: PageProps<'/[uid]'>): Promise
   const { uid } = await params;
   const player = await loadPlayerBuild(uid);
   if (!player) return { title: 'Player not found · Noelle Mains Leaderboard' };
+  const card = { url: `/${uid}/card`, width: 1200, height: 630, alt: `${player.nickname}'s Noelle build card` };
   return {
     title: `${player.nickname}'s Noelle · Noelle Mains Leaderboard`,
     description: `${player.nickname}'s Noelle build (UID ${uid}): artifacts, talents, constellations and team rankings.`,
+    openGraph: { images: [card] },
+    twitter: { card: 'summary_large_image', images: [card] },
   };
 }
 
@@ -60,7 +64,10 @@ async function PlayerBuild({ uid }: { uid: string }) {
             {player.level != null && <> · AR {player.level}</>} · Updated {formatDateTime(player.updatedAt)}
           </p>
         </div>
-        <RefreshBuildButton uid={player.uid} />
+        <div className="flex flex-col gap-2 sm:items-end">
+          <ShareActions uid={player.uid} nickname={player.nickname} />
+          <RefreshBuildButton uid={player.uid} />
+        </div>
       </header>
 
       <CharacterCard build={build} />
@@ -78,6 +85,20 @@ async function PlayerBuild({ uid }: { uid: string }) {
       )}
 
       <ScenarioResults scenarios={player.scenarios} />
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-bold text-ink">Share card</h2>
+        {/* eslint-disable-next-line @next/next/no-img-element -- already a sized PNG from /[uid]/card */}
+        <img
+          src={`/${player.uid}/card?v=${encodeURIComponent(player.updatedAt)}`}
+          alt={`${player.nickname}'s Noelle build card`}
+          width={1200}
+          height={630}
+          loading="lazy"
+          className="h-auto w-full max-w-3xl rounded-2xl shadow-2xl shadow-black/30"
+        />
+        <ShareActions uid={player.uid} nickname={player.nickname} />
+      </section>
     </>
   );
 }

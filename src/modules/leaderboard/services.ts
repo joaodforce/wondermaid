@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { leaderboardRanks, noelleBuilds, players, scenarios } from '@/db/schema';
+import { enkaProfiles, leaderboardRanks, noelleBuilds, players, scenarios } from '@/db/schema';
 import { calculateNoelleDamage } from '@/modules/calculator/noelle';
 import type { NoelleBuild } from '@/modules/calculator/types';
 import { fetchPlayerData } from '@/modules/enka/client';
@@ -87,6 +87,11 @@ export async function updatePlayerFromEnka(uid: string): Promise<{ nickname: str
       .insert(players)
       .values({ uid, ...profile, updatedAt: now })
       .onConflictDoUpdate({ target: players.uid, set: { ...profile, updatedAt: now } });
+
+    await tx
+      .insert(enkaProfiles)
+      .values({ uid, responseJson: data, fetchedAt: now })
+      .onConflictDoUpdate({ target: enkaProfiles.uid, set: { responseJson: data, fetchedAt: now } });
 
     const [{ buildId }] = await tx
       .insert(noelleBuilds)

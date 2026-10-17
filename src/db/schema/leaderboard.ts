@@ -9,6 +9,9 @@ export const scenarios = pgTable('scenarios', {
   description: text('description').notNull().default(''),
   attackType: varchar('attack_type', { length: 20 }).notNull(), // 'Na4' | 'Ca' | 'Plunge'
   teamConfigJson: jsonb('team_config_json').$type<TeamConfig>().notNull(),
+  // Every build is ranked with this weapon so only artifacts decide the order (default Redhorn Stonethresher R1)
+  weaponId: integer('weapon_id').notNull().default(12510),
+  weaponRefinement: integer('weapon_refinement').notNull().default(1),
   isActive: boolean('is_active').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
 });

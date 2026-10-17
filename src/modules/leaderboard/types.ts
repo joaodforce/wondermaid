@@ -1,4 +1,5 @@
 import type { AttackType, DamageBreakdown, NoelleBuild } from '@/modules/calculator/types';
+import type { TeamMember } from './team-members';
 
 // Shapes shared by the API, the server action and the client components
 
@@ -7,6 +8,9 @@ export interface ScenarioSummary {
   name: string;
   description: string;
   attackType: AttackType;
+  /** Weapon every build on this board is evaluated with */
+  weapon: { id: number; refinement: number; icon: string | null };
+  members: TeamMember[];
 }
 
 export interface LeaderboardEntry {
