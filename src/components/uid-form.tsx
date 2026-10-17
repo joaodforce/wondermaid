@@ -1,6 +1,7 @@
 'use client';
 
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import { useState, useTransition, type FormEvent } from 'react';
 import { processPlayerUpdate } from '@/app/actions/update-player';
 import { formatNumber } from '@/lib/format';
@@ -86,6 +87,12 @@ export function UidForm() {
                 </li>
               ))}
             </ul>
+            <Link
+              href={`/${result.uid}`}
+              className="mt-3 inline-flex items-center gap-1 font-medium text-emerald-100 hover:underline"
+            >
+              View the full build <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
           </div>
         )}
       </div>

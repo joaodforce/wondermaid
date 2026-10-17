@@ -21,13 +21,48 @@ export interface NoelleStats {
   geoDmgBonus: number;
 }
 
+/** A stat as Enka names it (FIGHT_PROP_*); percentage stats are in percent units (46.6 = 46.6%) */
+export interface StatLine {
+  type: string;
+  value: number;
+}
+
 export interface WeaponInfo {
   id: number;
   level: number;
   /** 1-5 */
   refinement: number;
   baseAtk: number;
-  subStat: { type: string; value: number } | null;
+  subStat: StatLine | null;
+  /** Enka icon name, e.g. UI_EquipIcon_Claymore_Itadorimaru */
+  icon?: string;
+  rarity?: number;
+}
+
+export const ARTIFACT_SLOTS = ['flower', 'plume', 'sands', 'goblet', 'circlet'] as const;
+export type ArtifactSlot = (typeof ARTIFACT_SLOTS)[number];
+
+export interface ArtifactPiece {
+  slot: ArtifactSlot;
+  setId: number;
+  /** 0-20 */
+  level: number;
+  rarity: number;
+  icon: string;
+  mainStat: StatLine;
+  subStats: StatLine[];
+}
+
+export interface TalentLevel {
+  level: number;
+  /** Levels added by constellations */
+  bonus: number;
+}
+
+export interface Talents {
+  normal: TalentLevel;
+  skill: TalentLevel;
+  burst: TalentLevel;
 }
 
 /** Parsed Noelle build, stored as `noelle_builds.stats_json` so ranks can be recalculated later. */
@@ -39,6 +74,9 @@ export interface NoelleBuild {
   /** Equipped piece count per artifact set ID */
   artifactSets: Record<number, number>;
   fourPieceSetId: number | null;
+  // Display-only details; builds stored before they were added don't have them
+  artifacts?: ArtifactPiece[];
+  talents?: Talents;
 }
 
 /**
