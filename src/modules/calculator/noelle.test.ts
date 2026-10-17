@@ -47,7 +47,7 @@ describe('calculateNoelleDamage', () => {
     });
 
     // Husk 4 stacks (+24%) and Gorou A1 (+25%) on base DEF, plus Gorou's flat DEF at skill level 13
-    const def = 3000 + 799 * (0.24 + 0.25) + 438.1;
+    const def = 3000 + 799 * (0.24 + 0.25) + 206.16 * 2.125;
     close(result.totalDef, def);
     const base = (900 + def * 1.35) * 2.242 + def * 0.4; // Redhorn R1 flat DMG
     const dmgBonus = 1 + 0.466 + 0.24 + 0.15 + 0.15; // goblet, Husk, Geo resonance, Gorou Crunch

@@ -3,7 +3,6 @@ import { formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { weaponName } from '@/modules/calculator/data';
 import {
-  BURST_DEF_TO_ATK,
   ENEMY_BASE_RES,
   ENEMY_LEVEL,
   LUNAR_CRYSTALLIZE_BASE,
@@ -261,7 +260,16 @@ export function FormulaPanel({ explanation: e }: { explanation: DamageExplanatio
           <Op>+</Op>
           <Value tone="result">{formatNumber(e.totalDef)}</Value>
           <Op>×</Op>
-          <Value tone="noelle" title="Burst level 13 (85%) + C6 (50%)">{pct(BURST_DEF_TO_ATK, 0)}</Value>
+          <Value
+            tone={e.noelle ? 'user' : 'noelle'}
+            title={
+              e.noelle
+                ? `Your burst level ${e.noelle.burstLevel}${e.noelle.constellation >= 6 ? ' + C6 (50%)' : ''}`
+                : 'Burst level 13 (85%) + C6 (50%)'
+            }
+          >
+            {pct(e.burstDefToAtk, 1)}
+          </Value>
         </Step>
 
         <Step index={++step} title="Base damage" result={<Value tone="result">{formatNumber(e.baseDamage)}</Value>}>
