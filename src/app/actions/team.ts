@@ -1,12 +1,16 @@
 'use server';
 
 import { z } from 'zod';
+import { hitRateLimit } from '@/lib/rate-limit';
 import { getCurrentUser } from '@/modules/auth/session';
 import { EnkaError } from '@/modules/enka/types';
 import { uidSchema } from '@/modules/leaderboard/validation';
 import { submitTeam, TeamError } from '@/modules/team/services';
 
 const submitSchema = z.object({ uid: uidSchema, teammateIds: z.array(z.number().int().positive()).length(3) });
+
+// Each submission reads Enka and runs the full team calculation
+const SUBMITS_PER_HOUR = 20;
 
 export type SubmitTeamResult = { ok: true; rank: number; finalDamage: number } | { ok: false; error: string };
 
@@ -15,6 +19,9 @@ export async function submitTeamAction(uid: string, teammateIds: number[]): Prom
   if (!user) return { ok: false, error: 'Log in first.' };
   const parsed = submitSchema.safeParse({ uid, teammateIds });
   if (!parsed.success) return { ok: false, error: 'Pick three teammates.' };
+  if (!(await hitRateLimit('team:submit', user.id, SUBMITS_PER_HOUR, 60 * 60))) {
+    return { ok: false, error: 'Too many submissions. Try again in an hour.' };
+  }
 
   try {
     return { ok: true, ...(await submitTeam(user.id, parsed.data.uid, parsed.data.teammateIds)) };
