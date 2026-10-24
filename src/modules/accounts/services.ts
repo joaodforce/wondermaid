@@ -1,16 +1,21 @@
 import { randomInt } from 'node:crypto';
-import { and, asc, eq, gt } from 'drizzle-orm';
+import { and, asc, count, eq, gt } from 'drizzle-orm';
 import { db } from '@/db';
+import { hitRateLimit } from '@/lib/rate-limit';
 import { getRedis } from '@/lib/redis';
 import { accountClaims, players } from '@/db/schema';
 import { fetchPlayerData } from '@/modules/enka/client';
 import { parsePlayerProfile } from '@/modules/enka/mapper';
 
 const CLAIM_MINUTES = 60;
+// Open claims one account can have at once
+const MAX_PENDING_CLAIMS = 5;
+// Verify attempts per account each hour, across all UIDs
+const VERIFY_PER_HOUR = 30;
 // Each Verify asks Enka for fresh data, so space attempts out to stay within its rate limits
 const VERIFY_COOLDOWN_SECONDS = 15;
 
-export type ClaimErrorCode = 'ALREADY_OWNED' | 'NO_CLAIM' | 'CODE_NOT_FOUND' | 'TOO_SOON';
+export type ClaimErrorCode = 'ALREADY_OWNED' | 'NO_CLAIM' | 'CODE_NOT_FOUND' | 'TOO_SOON' | 'TOO_MANY_CLAIMS';
 
 export class ClaimError extends Error {
   constructor(
@@ -53,6 +58,14 @@ export async function startClaim(userId: string, uid: string): Promise<PendingCl
     .limit(1);
   if (existing) return { uid, code: existing.code, expiresAt: existing.expiresAt.toISOString() };
 
+  const [{ open }] = await db
+    .select({ open: count() })
+    .from(accountClaims)
+    .where(and(eq(accountClaims.userId, userId), gt(accountClaims.expiresAt, new Date())));
+  if (open >= MAX_PENDING_CLAIMS) {
+    throw new ClaimError('TOO_MANY_CLAIMS', `You can have ${MAX_PENDING_CLAIMS} codes open at once. Finish or cancel one first.`);
+  }
+
   const claim = { userId, uid, code: newCode(), expiresAt: new Date(Date.now() + CLAIM_MINUTES * 60_000) };
   await db
     .insert(accountClaims)
@@ -80,6 +93,9 @@ export async function verifyClaim(userId: string, uid: string): Promise<void> {
     ?.set(`claims:verify:${userId}:${uid}`, 1, { nx: true, ex: VERIFY_COOLDOWN_SECONDS })
     .catch(() => 'OK');
   if (allowed === null) throw new ClaimError('TOO_SOON', 'Give it a few seconds before verifying again.');
+  if (!(await hitRateLimit('claims:verify-hourly', userId, VERIFY_PER_HOUR, 60 * 60))) {
+    throw new ClaimError('TOO_SOON', 'Too many verify attempts. Try again in an hour.');
+  }
 
   const data = await fetchPlayerData(uid, { fresh: true });
   const bio = data.playerInfo?.signature ?? '';

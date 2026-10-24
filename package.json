@@ -1,6 +1,6 @@
 {
   "name": "noelle-leaderboard",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -21,12 +21,12 @@
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.4",
-    "fflate": "^0.8.2",
+    "fflate": "^0.8.3",
     "lucide-react": "^1.58.0",
     "next": "16.4.2",
     "postgres": "^3.4.9",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.7"
   },
@@ -43,5 +43,10 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "$esbuild"
+    }
   }
 }

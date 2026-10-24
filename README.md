@@ -99,6 +99,24 @@ npm run dev
 | `npm run leaderboard:recalculate` | Recompute all ranks |
 | `npm run leaderboard:backfill` | Fetch ranks from Enka for players that have none (`-- --all` for everyone) |
 
+## Security
+
+- **Headers** (`next.config.ts`): a Content Security Policy that only allows this site plus Enka.Network images
+  (inline scripts stay allowed because nonces don't work with Partial Prerendering), `frame-ancestors 'none'`,
+  `nosniff`, a strict referrer policy, a locked-down Permissions-Policy and HSTS in production.
+- **Rate limits** (`src/lib/rate-limit.ts`, Upstash Redis; off without it, e.g. in local development):
+
+  | Limit | Applies to |
+  | :-- | :-- |
+  | 5 sign-ups an hour, 30 sign-in attempts per 15 minutes | Visitor IP |
+  | 10 failed sign-ins per 15 minutes | Username |
+  | 10 leaderboard updates a minute | Visitor IP |
+  | 5 open claim codes, 30 verify attempts an hour, 20 Team Showcase submissions an hour | Account |
+- **Client IP**: taken from the last `X-Forwarded-For` entry, which the reverse proxy in front of the app appends.
+  Behind a proxy that sends the IP in its own header (e.g. Cloudflare's `CF-Connecting-IP`), set `CLIENT_IP_HEADER`.
+  Without either, IP limits are skipped rather than applied to everyone at once.
+- **Sign-in redirects** only go to paths on this site (`src/modules/auth/redirect.ts`).
+
 ## Admin: bulk UID import
 
 `/admin/import` (only for the `joaodforce` account, `SUPER_ADMIN_USERNAME` in `src/modules/admin/services.ts`;
